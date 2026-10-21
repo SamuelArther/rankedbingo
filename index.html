@@ -944,6 +944,9 @@ function render() {
   else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) renderQuestion();
   else renderResults();
+  const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training" };
+  const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name : titles[route.page];
+  document.title = pageTitle ? `${pageTitle} · Ranked Bingo` : "Ranked Bingo";
   window.scrollTo({ top: 0 });
 }
 
@@ -1090,7 +1093,8 @@ function renderResults() {
         el("strong", { class: "job-name" }, j.n),
         el("p", { class: "muted", style: "margin:4px 0 0" }, j.d),
         j.shared.length ? el("p", { style: "margin:6px 0 0; font-size:14px" },
-          `Fits your interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null));
+          `Fits your interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null,
+        el("a", { href: branchLink(r.id, tracks[0].id, components[0].id), style: "display:inline-block; margin-top:8px; font-size:14px" }, "See this path →")));
   });
 
   const bars = ranked.map((r) => {
@@ -1382,7 +1386,7 @@ const DETAILS = {
 const COMPONENT_DETAILS = {
   active: {
     schedule: "Full-time, every day, like any job, plus deployments and field training.",
-    life: ["You live on or near a base, or on a ship", "Full-time pay, plus housing, food allowance and healthcare", "You move to a new duty station every few years", "Deployments depend on your branch and job"],
+    life: ["You live on or near a base, or aboard a ship in sea-going jobs", "Full-time pay, plus housing, food allowance and healthcare", "You move to a new duty station every few years", "How often you deploy depends on your job and unit"],
   },
   reserve: {
     schedule: "Usually one weekend a month and about two weeks of training a year.",
@@ -1502,7 +1506,9 @@ function renderBranch() {
       el("h2", { style: "margin-top:18px" }, `${option.title}, ${TRACKS[track].name}`),
       option.note ? el("div", { class: "note", style: "margin-bottom:14px" }, option.note) : null,
       el("p", {}, el("strong", {}, "Schedule: "), compD.schedule),
-      el("ul", { class: "list good" }, compD.life.map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x)))),
+      el("ul", { class: "list good" }, compD.life
+        .map((x) => (["af", "sf", "army"].includes(b) ? x.replace(", or aboard a ship in sea-going jobs", "") : x))
+        .map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x)))),
       el("p", { style: "margin-top:12px" }, el("strong", {}, `${TRACKS[track].name}: `), TRACKS[track].about),
 
       el("div", { class: "section-title" }, "Your path, step by step"),
@@ -1534,7 +1540,7 @@ function trainingCard(b) {
   return el("div", { class: "job", style: `--hero:${info.color}` },
     el("div", { class: "job-path" }, `${info.name} · ${bc.length}`),
     el("strong", { class: "job-name" }, bc.name),
-    el("p", { class: "muted", style: "margin:4px 0 10px" }, `${bc.where}. Led by ${bc.leaders.toLowerCase()}.`),
+    el("p", { class: "muted", style: "margin:4px 0 10px" }, `${bc.where}. Instructors: ${bc.leaders}.`),
     el("ol", { class: "steps compact" }, bc.phases.map(([t, x]) => el("li", {}, el("strong", {}, t), el("p", { class: "muted", style: "margin:2px 0 0" }, x)))),
     el("p", { style: "margin:10px 0 0" }, el("strong", {}, `After: ${d.tech.name}. `), d.tech.text),
     el("p", { style: "margin:8px 0 0" }, el("strong", {}, "Officers: "), d.officer));
