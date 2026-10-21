@@ -5,7 +5,7 @@
 // sites) is large, so it's only loaded when one of these pages is opened.
 
 // Turned on once js/jobs-data.js has the real lists.
-const FULL_LIST_READY = false;
+const FULL_LIST_READY = true;
 
 let jobsLoading = null;
 

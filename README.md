@@ -32,6 +32,7 @@ A quiz that matches you to the U.S. military branch that fits you best (Army, Ma
 
 Besides the quiz, the site has:
 
+- **Full job lists:** 1,015 enlisted, warrant officer and officer jobs across all six branches (Army MOSs, Marine Corps MOSs, Navy ratings and officer communities, Air Force and Space Force AFSCs, Coast Guard ratings), searchable, each with its own page. Built from each branch's official career listings in October 2026.
 - **Pay:** every rank in every branch, and a 2026 basic pay calculator (DFAS tables) with housing and food allowances explained.
 - **Join:** an eligibility check (age, education, ASVAB, citizenship), each branch's requirements, and each branch's fitness test with a "check your numbers" comparison.
 - **Fun:** boot camp bingo, a phonetic alphabet speed game, a slang glossary, history timelines, famous people who served, major bases, and badges.
