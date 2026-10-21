@@ -349,6 +349,8 @@ function renderFun() {
       el("h1", {}, T("Games and extras")),
       el("div", { class: "section-title" }, T("Boot camp bingo")),
       renderBootcampBingo(),
+      el("div", { class: "section-title" }, T("ASVAB practice")),
+      el("a", { class: "button", href: "#/asvab" }, T("Practice the ASVAB →")),
       el("div", { class: "section-title" }, T("Phonetic alphabet challenge")),
       phoneticGame(),
       el("div", { class: "section-title" }, T("Military slang")),

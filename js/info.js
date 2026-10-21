@@ -260,6 +260,7 @@ function renderJoin() {
       el("div", { class: "eyebrow" }, T("Join")),
       el("h1", {}, T("Can I join?")),
       el("p", { class: "muted" }, T("A quick check against each branch's basic enlistment rules, and how your fitness compares with each branch's test. This isn't an official decision: recruiters and MEPS make the real call, and many issues can be waived.")),
+      el("div", { class: "actions", style: "margin-top:0" }, el("a", { class: "button primary", href: "#/asvab" }, T("Practice the ASVAB →"))),
       el("div", { class: "card", style: "margin-top:16px" },
         el("div", { class: "eyebrow" }, T("Eligibility check")),
         el("div", { class: "form-grid" }, age, edu, afqt, cit),

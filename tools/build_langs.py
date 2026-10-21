@@ -17,7 +17,7 @@ def main():
     english = json.loads((LANG_DIR / "en.json").read_text(encoding="utf-8"))
     for path in sorted(LANG_DIR.glob("*.json")):
         code = path.stem
-        if code == "en":
+        if code == "en" or code.startswith("jobs-"):
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
         good, bad = {}, []

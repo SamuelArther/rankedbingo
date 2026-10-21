@@ -114,10 +114,12 @@ function render() {
   else if (route.page === "pay") renderPay();
   else if (route.page === "join") renderJoin();
   else if (route.page === "job") renderJob();
+  else if (route.page === "asvab") renderAsvab();
+  else if (route.page === "squad") renderSquad();
   else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) (state.mode === "bingo" ? renderBingoPlay() : renderQuestion());
   else renderResults();
-  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?") };
+  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare") };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name
     : route.page === "jobs" || route.page === "job" ? T("{branch} jobs", { branch: BRANCHES[route.branch].name }) : titles[route.page];
   document.title = pageTitle ? `${pageTitle} · ${T("Ranked Bingo")}` : T("Ranked Bingo");
@@ -588,6 +590,7 @@ function shareSection(r) {
       el("button", { onclick: () => shareImage(r, getName(), format, false) }, T("Download image")),
       CAN_SHARE && navigator.canShare ? el("button", { onclick: () => shareImage(r, getName(), format, true) }, T("Share image")) : null,
       status),
+    squadBox(code, getName),
     el("div", { class: "section-title" }, T("Compare with a friend")),
     el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, T("Send them your link. When they finish, paste their link here.")),
     el("div", { class: "row" }, friendInput, el("button", { onclick: compare }, T("Compare"))));
@@ -627,6 +630,60 @@ function renderShared() {
         : el("a", { href: "#/quiz" }, T("Take the quiz to compare →"))),
     resultView({ qs: data.qs, answers: data.answers, name: name || null }),
   );
+}
+
+// Squad compare: paste several result links (yours is added automatically).
+function squadBox(myCode, getName) {
+  const area = el("textarea", { class: "text-input", rows: "4", placeholder: T("Paste friends' result links, one per line"), "aria-label": T("Paste friends' result links, one per line") });
+  const msg = el("span", { class: "muted", style: "font-size:14px" });
+  const go = () => {
+    const found = [...area.value.matchAll(/#\/r\/([0-9a-z-]+)(?:\?n=([^&\s]*))?/gi)].filter((m) => decodeAnswers(m[1]));
+    if (!found.length) { msg.textContent = T("Paste at least one friend's result link."); return; }
+    const codes = [myCode, ...found.map((m) => m[1])].slice(0, 12);
+    const names = [getName() || "You", ...found.map((m, i) => (m[2] ? cleanName(decodeURIComponent(m[2])) : "") || T("Friend {n}", { n: i + 1 }))];
+    location.hash = `#/squad/${codes.join(".")}?n=${names.map(encodeURIComponent).join("|")}`;
+  };
+  return [
+    el("div", { class: "section-title" }, T("Squad compare")),
+    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, T("Compare your whole squad: paste up to 11 friends' links.")),
+    area,
+    el("div", { class: "actions", style: "margin-top:8px" }, el("button", { onclick: go }, T("Compare squad")), msg),
+  ];
+}
+
+function renderSquad() {
+  const members = route.codes.map((code, i) => {
+    const data = decodeAnswers(code);
+    if (!data) return null;
+    const raw = cleanName(route.names[i]);
+    return { code, name: !raw ? T("Friend {n}", { n: i + 1 }) : raw === "You" ? T("You") : raw, r: computeResult(data.qs, data.answers) };
+  }).filter(Boolean);
+  if (members.length < 2) {
+    app.append(el("div", { class: "card fade-in" }, el("h1", {}, T("Can't compare these")), el("p", { class: "muted" }, T("A squad needs at least two working result links.")), el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz"))));
+    return;
+  }
+  // Average match per branch across the squad, and how many have each as top.
+  const avg = ORDER.map((id) => ({ id, pct: Math.round(members.reduce((a, m) => a + m.r.ranked.find((x) => x.id === id).pct, 0) / members.length) }))
+    .sort((a, b) => b.pct - a.pct);
+  const counts = ORDER.map((id) => ({ id, n: members.filter((m) => m.r.top.id === id).length })).filter((c) => c.n);
+  const best = avg[0];
+  setBackground(best.id, route.codes.join("."));
+  award("squad");
+  app.append(el("div", { class: "card results fade-in" },
+    el("div", { class: "eyebrow" }, T("Squad compare")),
+    el("h1", {}, T("Your squad: {count} people", { count: members.length })),
+    el("p", { style: "font-size:18px" }, counts.map((c) => `${c.n} ${BRANCHES[c.id].name}`).join(" · ")),
+    el("p", {}, T("As a group, your squad matches the {branch} best ({pct}% on average).", { branch: BRANCHES[best.id].name, pct: best.pct })),
+    el("div", { class: "section-title" }, T("Members")),
+    el("div", { class: "jobs" }, members.map((m) => el("a", { class: "job-row", href: `#/r/${m.code}?n=${encodeURIComponent(m.name)}`, style: `--hero:${BRANCHES[m.r.top.id].color}` },
+      el("span", { class: "job-row-text" },
+        el("strong", {}, m.name),
+        el("span", {}, `${joinWords(m.r.tied.map((x) => BRANCHES[x.id].name))} · ${T("{pct}% MATCH", { pct: m.r.top.pct })}`),
+        el("span", { class: "muted" }, `${joinOr(m.r.options.map((o) => o.title))} · ${m.r.topJob(m.r.top.id)[0].n}`))))),
+    el("div", { class: "section-title" }, T("Squad average by branch")),
+    el("div", { class: "bars" }, avg.map((x) => bar(BRANCHES[x.id].name, x.pct, BRANCHES[x.id].color))),
+    el("div", { class: "actions" }, el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz"))),
+  ));
 }
 
 function renderCompare() {
@@ -919,11 +976,16 @@ function parseRoute() {
     route.nameA = params.get("a");
     route.nameB = params.get("b");
   }
+  // Squads: #/squad/<code>.<code>.<code>?n=Name|Name|Name
+  if (route.page === "squad") {
+    route.codes = (parts[1] || "").split(".").filter(Boolean).slice(0, 12);
+    route.names = (params.get("n") || "").split("|");
+  }
   // Full job lists: #/jobs/<branch>?track=... and #/job/<branch>/<job id>.
   route.jobTrack = params.get("track");
   route.jobId = route.page === "job" ? decodeURIComponent(parts[2] || "") : null;
   if ((route.page === "branch" || route.page === "jobs" || route.page === "job") && !route.branch) route.page = "branches";
-  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join"].includes(route.page)) route.page = "quiz";
+  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join", "asvab", "squad"].includes(route.page)) route.page = "quiz";
 }
 
 function branchLink(branch, track = "enlisted", type = "active") {
@@ -933,7 +995,7 @@ function branchLink(branch, track = "enlisted", type = "active") {
 function renderNav() {
   const nav = document.getElementById("nav");
   const tabs = [["quiz", T("Quiz")], ["branches", T("Branches")], ["types", T("Service")], ["training", T("Training")], ["pay", T("Pay")], ["join", T("Join")], ["fun", T("Fun")]];
-  const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page;
+  const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page === "asvab" ? "join" : route.page;
   const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
   nav.replaceChildren(
     el("div", { class: "nav-top" },

@@ -1187,8 +1187,16 @@ const BG_PHOTOS = {
     { src: "images/navy3.jpg", focus: [0.55, 0.45] }, // sailor on a machine gun
     { src: "images/navy4.jpg", focus: [0.55, 0.6] },  // sailors manning the rails
   ],
-  af: [{ src: "images/af.jpg", focus: [0.7, 0.4] }],       // jet on afterburner
-  sf: [{ src: "images/sf.jpg", focus: [0.55, 0.4] }],      // two Guardians
+  af: [
+    { src: "images/af.jpg", focus: [0.7, 0.4] },     // jet on afterburner
+    { src: "images/af2.jpg", focus: [0.47, 0.42] },  // T-38s in formation
+    { src: "images/af3.jpg", focus: [0.5, 0.55] },   // T-38 close up
+    { src: "images/af4.jpg", focus: [0.5, 0.5] },    // F-15EX formation
+  ],
+  sf: [
+    { src: "images/sf.jpg", focus: [0.55, 0.4] },    // two Guardians
+    { src: "images/sf2.jpg", focus: [0.6, 0.45] },   // satellite dishes
+  ],
   cg: [
     { src: "images/cg.jpg", focus: [0.57, 0.58] },   // response boat
     { src: "images/cg2.jpg", focus: [0.35, 0.5] },   // deck crew hauling a line
