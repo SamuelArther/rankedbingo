@@ -46,7 +46,7 @@ function save() {
 function loadSaved() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    const qs = s.ids.map((id) => POOL.find((q) => q.id === id));
+    const qs = s.ids.map((id) => ALL_QUESTIONS.find((q) => q.id === id));
     if (qs.some((q) => !q) || s.orders.length !== qs.length) return null;
     return { ...s, qs };
   } catch {
@@ -107,7 +107,7 @@ function render() {
   else if (route.page === "join") renderJoin();
   else if (route.page === "job") renderJob();
   else if (state.step < 0) renderIntro();
-  else if (state.step < QUESTIONS.length) renderQuestion();
+  else if (state.step < QUESTIONS.length) (state.mode === "bingo" ? renderBingoPlay() : renderQuestion());
   else renderResults();
   const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training", shared: "Shared result", compare: "Compare results", fun: "Fun", pay: "Ranks & pay", join: "Can I join?" };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name
@@ -131,7 +131,7 @@ function renderIntro() {
       ORDER.map((b) => el("span", { class: "chip" },
         el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name))),
     resumable
-      ? el("div", { class: "note", style: "margin-bottom:14px" }, `You have a quiz in progress (question ${state.resumeStep + 1} of ${QUESTIONS.length}).`)
+      ? el("div", { class: "note", style: "margin-bottom:14px" }, state.mode === "bingo" ? "You have a bingo card in progress." : `You have a quiz in progress (question ${state.resumeStep + 1} of ${QUESTIONS.length}).`)
       : null,
     el("div", { class: "actions", style: "margin-top:0" },
       resumable
@@ -139,9 +139,10 @@ function renderIntro() {
         : null,
       el("button", { class: resumable ? "" : "primary", onclick: () => { if (resumable) newQuiz("full"); state.resumeStep = null; startQuiz("full"); } },
         resumable ? `Start over (${total(full)} questions)` : "Start the quiz"),
-      el("button", { onclick: () => { if (resumable) newQuiz("quick"); state.resumeStep = null; startQuiz("quick"); } }, `Quick mode (${total(quick)} questions)`)),
+      el("button", { onclick: () => { if (resumable) newQuiz("quick"); state.resumeStep = null; startQuiz("quick"); } }, `Quick mode (${total(quick)} questions)`),
+      el("button", { onclick: () => { if (resumable) newQuiz("bingo"); state.resumeStep = null; startQuiz("bingo"); } }, "Bingo mode 🎯")),
     el("p", { class: "muted", style: "margin:12px 0 0; font-size:14px" },
-      `The full quiz has ${total(full)} questions and takes about 8 minutes. Quick mode takes about 3 minutes but gives a rougher result.`),
+      `The full quiz has ${total(full)} questions and takes about 8 minutes. Quick mode takes about 3 minutes but gives a rougher result. Bingo mode is a card of statements: tap the ones that fit you and hit Done.`),
   ));
 }
 
@@ -250,7 +251,7 @@ function renderResults() {
     ));
     return;
   }
-  app.append(resultView({ qs: QUESTIONS, answers: state.answers, mine: true, quick: state.mode === "quick" }));
+  app.append(resultView({ qs: QUESTIONS, answers: state.answers, mine: true, quick: state.mode === "quick" || state.mode === "bingo" }));
 }
 
 // Everything computed for one result, mine or shared.
@@ -358,7 +359,9 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
         : el("p", { style: "margin-top:12px" }, info.tagline),
       el("p", { style: "margin:0" }, isTie ? "Best ways to serve: " : "Best way to serve: ",
         el("strong", {}, options.map((o) => `${o.title}, ${track.name}`).join(" or ")))),
-    quick ? el("div", { class: "note", style: "margin-bottom:14px" }, "Quick mode result: fewer questions means a rougher estimate. Take the full quiz for a sharper one.") : null,
+    quick ? el("div", { class: "note", style: "margin-bottom:14px" }, qs.some((q) => q.bingo)
+      ? "Bingo mode result: a fun, fast estimate. Take the full quiz for a sharper one."
+      : "Quick mode result: fewer questions means a rougher estimate. Take the full quiz for a sharper one.") : null,
     tied.map((x) => el("p", {}, isTie ? el("strong", {}, BRANCHES[x.id].name + ": ") : null, BRANCHES[x.id].about)),
 
     el("div", { class: "section-title" }, mine ? "Top roles for you" : "Top roles"),
@@ -375,8 +378,7 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
     el("div", { class: "section-title" }, "Trait map"),
     radarSection(user, top.id),
 
-    el("div", { class: "section-title" }, "Bingo card"),
-    bingoSection(r, encodeAnswers(qs, answers)),
+    qs.some((q) => q.bingo) ? [el("div", { class: "section-title" }, mine ? "Your bingo card" : "Bingo card"), bingoResultCard(qs, answers)] : null,
 
     why.length ? [
       el("div", { class: "section-title" }, mine ? "Why you matched" : "Why it matched"),
@@ -423,6 +425,7 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
       mine
         ? [el("button", { class: "primary", onclick: () => { newQuiz("full"); startQuiz("full"); } }, "Take it again"),
            el("button", { onclick: () => { newQuiz("quick"); startQuiz("quick"); } }, "Quick mode (15 questions)"),
+           el("button", { onclick: () => { newQuiz("bingo"); startQuiz("bingo"); } }, "Bingo mode 🎯"),
            el("button", { onclick: (e) => copyResult(e, r) }, "Copy my result"),
            el("button", { onclick: () => window.print() }, "Print / save as PDF")]
         : el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz yourself"),
@@ -854,7 +857,7 @@ document.addEventListener("keydown", (e) => {
   if (e.altKey || e.ctrlKey || e.metaKey) return;
   if (route.page !== "quiz") return;
   if (e.target.matches && e.target.matches("input, textarea")) return;
-  if (state.step < 0 || state.step >= QUESTIONS.length) return;
+  if (state.step < 0 || state.step >= QUESTIONS.length || state.mode === "bingo") return;
   const n = e.key === "0" ? 10 : Number(e.key);
   const order = state.orders[state.step];
   if (n >= 1 && n <= order.length) choose(order[n - 1]);

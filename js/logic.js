@@ -69,6 +69,17 @@ function profile(answers, qs = QUESTIONS) {
   answers.forEach((idx, i) => {
     if (idx == null) return;
     const opts = qs[i].options;
+    // A bingo square only says something when it's checked; leaving one
+    // unchecked isn't a "no", just no evidence. Cards are built with
+    // statements in both directions, so this doesn't tilt results.
+    if (qs[i].bingo) {
+      if (idx !== 0) return;
+      for (const [t, v] of Object.entries(opts[0].w)) {
+        sum[t] = (sum[t] || 0) + v / 2;
+        n[t] = (n[t] || 0) + 1;
+      }
+      return;
+    }
     for (const t of new Set(opts.flatMap((o) => Object.keys(o.w)))) {
       const mean = opts.reduce((a, o) => a + (o.w[t] || 0), 0) / opts.length;
       sum[t] = (sum[t] || 0) + (opts[idx].w[t] || 0) - mean;
@@ -224,6 +235,7 @@ function traitsOf(q) {
 const MODES = {
   full: { trait: 29, interest: 6, role: 5, service: 5 },
   quick: { trait: 8, interest: 3, role: 2, service: 2 },
+  bingo: { trait: 16, interest: 4, role: 2, service: 2 },
 };
 
 // Draws a quiz from the pool. Trait questions are picked greedily so every
@@ -258,7 +270,16 @@ function pickCovering(pool, count, keysOf, rng) {
 function pickQuestions(mode, rng) {
   const counts = MODES[mode] || MODES.full;
   const byGroup = { trait: [], interest: [], role: [], service: [] };
-  for (const q of POOL) byGroup[groupOf(q)].push(q);
+  for (const q of mode === "bingo" ? BINGO_POOL : POOL) byGroup[groupOf(q)].push(q);
+  if (mode === "bingo") {
+    // A bingo card mixes everything together.
+    return shuffled([
+      ...pickCovering(byGroup.trait, counts.trait, (q) => Object.entries(q.options[0].w).map(([t, v]) => t + (v > 0 ? "+" : "-")), rng),
+      ...pickCovering(byGroup.interest, counts.interest, interestsOf, rng),
+      ...pickCovering(byGroup.role, counts.role, (q) => Object.keys(q.options[0].k), rng),
+      ...pickCovering(byGroup.service, counts.service, (q) => Object.keys(q.options[0].c), rng),
+    ], rng);
+  }
   return [
     ...pickCovering(byGroup.trait, counts.trait, traitsOf, rng),
     ...pickCovering(byGroup.interest, counts.interest, interestsOf, rng),
@@ -288,7 +309,7 @@ function decodeAnswers(code) {
   if (!code || code.length % 3 !== 0 || code.length > 3 * 60) return null;
   const qs = [], answers = [];
   for (let i = 0; i < code.length; i += 3) {
-    const q = POOL.find((x) => x.id === parseInt(code.slice(i, i + 2), 36));
+    const q = ALL_QUESTIONS.find((x) => x.id === parseInt(code.slice(i, i + 2), 36));
     const a = code[i + 2];
     if (!q || qs.includes(q)) return null;
     const idx = a === "-" ? null : parseInt(a, 36);

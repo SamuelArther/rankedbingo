@@ -352,3 +352,7 @@ dl.req dd { margin: 0; }
   .bingo-cell { color: #000 !important; }
   a { color: #000; }
 }
+/* Bingo mode cards hold whole sentences, so cells grow to fit. */
+.bingo-board.play { max-width: 560px; grid-auto-rows: minmax(88px, auto); }
+.bingo-board.play .bingo-cell { aspect-ratio: auto; padding: 6px 4px; font-size: 12px; line-height: 1.2; }
+@media (max-width: 400px) { .bingo-board.play .bingo-cell { font-size: 10.5px; } }

@@ -61,8 +61,8 @@ const BADGES = [
   { id: "hopper", icon: "🔀", name: "Branch hopper", desc: "Get three different top branches." },
   { id: "tie", icon: "🤝", name: "Tie breaker", desc: "Get a tie for your top branch." },
   { id: "undecided", icon: "🤷", name: "Undecided", desc: "Skip five questions in one quiz." },
-  { id: "bingo", icon: "🎯", name: "Bingo!", desc: "Get a bingo on your results card." },
-  { id: "blackout", icon: "⬛", name: "Triple bingo", desc: "Get three or more bingos for one branch." },
+  { id: "bingo", icon: "🎯", name: "Bingo!", desc: "Get a bingo in Bingo mode." },
+  { id: "blackout", icon: "⬛", name: "Triple bingo", desc: "Get three or more bingos on one Bingo mode card." },
   { id: "explorer", icon: "🧭", name: "Explorer", desc: "Visit all six branch pages." },
   { id: "recruiter", icon: "📣", name: "Recruiter", desc: "Share your result." },
   { id: "squad", icon: "👥", name: "Squad goals", desc: "Compare results with a friend." },
@@ -91,17 +91,20 @@ function recordQuizDone(qs, answers, mode) {
   const stats = loadJson(STATS_KEY, { quizzes: 0, tops: [], visited: [] });
   stats.quizzes += 1;
   award("recruit");
-  award(mode === "quick" ? "quickdraw" : "fullsend");
+  if (mode === "quick") award("quickdraw");
+  if (mode === "full") award("fullsend");
   if (stats.quizzes >= 3) award("veteran");
-  if (answers.filter((a) => a == null).length >= 5) award("undecided");
+  if (mode !== "bingo" && answers.filter((a) => a == null).length >= 5) award("undecided");
+  if (mode === "bingo") {
+    const { lines } = bingoLinesFor(answers);
+    if (lines.length >= 1) award("bingo");
+    if (lines.length >= 3) award("blackout");
+  }
   if (answers.filter((a) => a != null).length >= minAnswers(qs)) {
     const r = computeResult(qs, answers);
     if (!stats.tops.includes(r.top.id)) stats.tops.push(r.top.id);
     if (stats.tops.length >= 3) award("hopper");
     if (r.tied.length > 1) award("tie");
-    const counts = ORDER.map((b) => completedLines(bingoMarks(bingoSquares(r, encodeAnswers(qs, answers)), b)).length);
-    if (counts[ORDER.indexOf(r.top.id)] > 0) award("bingo");
-    if (Math.max(...counts) >= 3) award("blackout");
   }
   saveJson(STATS_KEY, stats);
 }
@@ -122,96 +125,74 @@ function badgeGrid() {
 }
 
 // ---------------------------------------------------------------------------
-// Bingo mode: a 5x5 card made from your answers. Each square is one of your
-// leanings; a branch stamps the squares it shares with you. Get a full row,
-// column or diagonal and that branch gets a bingo.
+// Bingo mode: a 5x5 card of statements. Check every square that fits you,
+// hit Done, and the checks are scored like quiz answers. Full rows, columns
+// and diagonals light up as bingos (just for fun; they don't change the
+// result).
 
-const TRAIT_BINGO = {
-  sea: ["Sea legs", "Land lover"], land: ["Field work", "No field days"], air: ["Aviation", "Grounded"],
-  space: ["Space nerd", "Down to earth"], physical: ["Physical", "Brain over brawn"], tech: ["Techie", "Hands-on"],
-  tradition: ["Discipline", "Laid-back"], travel: ["Globetrotter", "Homebody"], homeland: ["Home front", "Overseas"],
-  combat: ["Front line", "Support role"], scale: ["Big org", "Small team"], comfort: ["Comfort", "Roughing it"],
-};
-
-const INTEREST_BINGO = {
-  medical: "Medicine", build: "Building", mechanic: "Machines", cyber: "Cyber", intel: "Intel", law: "Law enforcement",
-  aviation: "Flying", elite: "Special ops", logistics: "Logistics", comms: "Comms", weapons: "Weapons", infantry: "Infantry",
-};
-
-// The 24 squares (the center is free): your lean on all 12 traits, your top
-// 11 job interests and your service type. The layout is shuffled but fixed
-// for a given result, so shared links show the same card.
-function bingoSquares(r, code) {
-  const interests = interestVector(r.answers, r.qs);
-  const topInterests = Object.keys(INTEREST_BINGO)
-    .sort((a, b) => (interests[b] || 0) - (interests[a] || 0) || Object.keys(INTEREST_BINGO).indexOf(a) - Object.keys(INTEREST_BINGO).indexOf(b))
-    .slice(0, 11);
-  const squares = [
-    ...TRAIT_IDS.map((t) => {
-      const value = r.user[t] ? r.user[t].value : 0;
-      const dir = value < 0 ? -1 : 1;
-      return { kind: "trait", key: t, dir, strong: Math.abs(value) >= 0.3, label: TRAIT_BINGO[t][dir > 0 ? 0 : 1] };
-    }),
-    ...topInterests.map((k) => ({ kind: "interest", key: k, strong: (interests[k] || 0) > 0, label: INTEREST_BINGO[k] })),
-    { kind: "component", key: r.components[0].id, strong: true, label: COMPONENTS[r.components[0].id].name },
-  ];
-  const laid = shuffled(squares, makeRng(hashString(code)));
-  laid.splice(12, 0, { kind: "free", label: "FREE" });
-  return laid;
+// The 24 squares around the free center, as 25 cells.
+function bingoCells(qs) {
+  return [...qs.slice(0, 12), null, ...qs.slice(12, 24)];
 }
 
-// How much of a branch's job list is about an interest.
-function interestShare(branch, k) {
-  return JOBS[branch].reduce((a, j) => a + (j.i[k] || 0), 0) / JOBS[branch].length;
+function bingoLinesFor(answers) {
+  // Answers can be shorter than the card (only tapped squares are set).
+  const checked = Array.from({ length: 24 }, (_, k) => answers[k] === 0);
+  const marked = [...checked.slice(0, 12), true, ...checked.slice(12)];
+  return { marked, lines: completedLines(marked) };
 }
 
-// Which squares a branch stamps: only real shared leanings. A trait counts if
-// you clearly lean that way and so does the branch; an interest counts if you
-// showed it and the branch is one of the four strongest in it.
-function bingoMarks(squares, branch) {
-  return squares.map((sq) => {
-    if (sq.kind === "free") return true;
-    if (!sq.strong) return false;
-    if (sq.kind === "trait") {
-      const p = BRANCHES[branch].traits[sq.key];
-      return Math.sign(p) === sq.dir && Math.abs(p) >= 1;
-    }
-    if (sq.kind === "interest") {
-      const shares = ORDER.map((b) => interestShare(b, sq.key)).sort((a, b) => b - a);
-      const mine = interestShare(branch, sq.key);
-      return mine > 0 && mine >= shares[3];
-    }
-    return !serviceOption(branch, sq.key).note;
-  });
+const MIN_BINGO_CHECKS = 5;
+
+function renderBingoPlay() {
+  const cells = bingoCells(QUESTIONS);
+  const checked = state.answers.filter((a) => a === 0).length;
+  const { marked, lines } = bingoLinesFor(state.answers);
+  const inLine = new Set(lines.flat());
+  app.append(el("div", { class: "card fade-in" },
+    el("div", { class: "eyebrow" }, "Bingo mode"),
+    el("h2", { style: "margin-bottom:6px" }, "Tap every square that fits you"),
+    el("p", { class: "muted", style: "font-size:14px" }, `Then hit Done to see your branch. Checked: ${checked}${lines.length ? ` · BINGO ×${lines.length}! 🎯` : ""}`),
+    el("div", { class: "bingo-board play" }, cells.map((q, i) => {
+      if (!q) return el("div", { class: "bingo-cell marked free" + (inLine.has(i) ? " line" : ""), style: "--c:var(--accent)" }, "★ FREE");
+      const qi = i < 12 ? i : i - 1;
+      return el("button", {
+        class: "bingo-cell" + (marked[i] ? " marked" : "") + (inLine.has(i) ? " line" : ""),
+        style: "--c:var(--accent)",
+        "aria-pressed": String(marked[i]),
+        onclick: () => {
+          state.answers[qi] = state.answers[qi] === 0 ? null : 0;
+          save();
+          render();
+        },
+      }, q.q, DEBUG ? el("span", { class: "debug" }, describeEffects(q.options[0])) : null);
+    })),
+    el("div", { class: "nav" },
+      el("button", { onclick: () => { state.step = -1; render(); } }, "Back"),
+      el("button", {
+        class: "primary", disabled: checked < MIN_BINGO_CHECKS,
+        onclick: () => {
+          state.answers = QUESTIONS.map((_, i) => (state.answers[i] === 0 ? 0 : 1));
+          state.step = QUESTIONS.length;
+          recordQuizDone(QUESTIONS, state.answers, state.mode);
+          save();
+          render();
+        },
+      }, checked < MIN_BINGO_CHECKS ? `Check at least ${MIN_BINGO_CHECKS}` : "Done")),
+  ));
 }
 
-function bingoSection(r, code) {
-  const squares = bingoSquares(r, code);
-  const results = Object.fromEntries(ORDER.map((b) => {
-    const marks = bingoMarks(squares, b);
-    return [b, { marks, lines: completedLines(marks) }];
-  }));
-  const holder = el("div");
-  const board = el("div", { class: "bingo-board" });
-  const chips = el("div", { class: "chips", style: "justify-content:center; margin-top:12px" });
-  const show = (b) => {
-    const { marks, lines } = results[b];
-    const inLine = new Set(lines.flat());
-    board.replaceChildren(...squares.map((sq, i) => el("div", {
-      class: "bingo-cell" + (marks[i] ? " marked" : "") + (inLine.has(i) ? " line" : "") + (sq.kind === "free" ? " free" : ""),
-      style: `--c:${BRANCHES[b].color}`,
-    }, sq.kind === "free" ? "★ FREE" : sq.label)));
-    holder.replaceChildren(el("div", { class: "bingo-head", style: `--c:${BRANCHES[b].color}` },
-      lines.length ? `BINGO ×${lines.length} for the ${BRANCHES[b].name}!` : `No bingo for the ${BRANCHES[b].name}`));
-    chips.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.b === b));
-  };
-  ORDER.forEach((b) => chips.append(el("button", { class: "chip chip-btn", "data-b": b, onclick: () => show(b) },
-    el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), `${BRANCHES[b].name} ${results[b].lines.length}`)));
-  show(r.top.id);
+// Your filled card on the results page.
+function bingoResultCard(qs, answers) {
+  const cells = bingoCells(qs);
+  const { marked, lines } = bingoLinesFor(answers);
+  const inLine = new Set(lines.flat());
   return el("div", {},
-    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" },
-      "Your answers, as a bingo card. Each branch stamps the squares it shares with you. A full row, column or diagonal is a bingo. Tap a branch to see its card (the number is its bingo count)."),
-    holder, board, chips);
+    el("div", { class: "bingo-head", style: "--c:var(--accent)" }, lines.length ? `BINGO ×${lines.length}! 🎯` : `${answers.filter((a) => a === 0).length} squares checked`),
+    el("div", { class: "bingo-board play" }, cells.map((q, i) => el("div", {
+      class: "bingo-cell" + (marked[i] ? " marked" : "") + (inLine.has(i) ? " line" : "") + (q ? "" : " free"),
+      style: "--c:var(--accent)",
+    }, q ? q.q : "★ FREE"))));
 }
 
 // ---------------------------------------------------------------------------

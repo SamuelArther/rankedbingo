@@ -691,6 +691,79 @@ const POOL = [
   ] },
 ];
 
+// Bingo mode squares. Each is a statement you check if it fits you; checking
+// it counts as picking option 0. Like POOL, ids are permanent (share links).
+const bingoSquare = (id, t, effects) => ({ id, bingo: true, topic: "Bingo", q: t, options: [{ t: "Fits me", w: {}, ...effects }, { t: "Doesn't fit", w: {} }] });
+
+const BINGO_POOL = [
+  // Traits.
+  bingoSquare(201, "I love being on the water", { w: { sea: 2 } }),
+  bingoSquare(202, "I get seasick", { w: { sea: -2 } }),
+  bingoSquare(203, "Boats and ships are cool", { w: { sea: 2 } }),
+  bingoSquare(204, "I'm a strong swimmer", { w: { sea: 1, physical: 1 } }),
+  bingoSquare(205, "I'm into hunting, hiking or survival stuff", { w: { land: 2, physical: 1 } }),
+  bingoSquare(206, "I'd rather be outdoors than inside", { w: { land: 1, physical: 1, comfort: -1 } }),
+  bingoSquare(207, "I want to fly", { w: { air: 2 } }),
+  bingoSquare(208, "Jets and planes are awesome", { w: { air: 2 } }),
+  bingoSquare(209, "Space is the coolest thing ever", { w: { space: 2 } }),
+  bingoSquare(210, "I work out almost every day", { w: { physical: 2 } }),
+  bingoSquare(211, "I want the hardest challenge possible", { w: { physical: 2, tradition: 1 } }),
+  bingoSquare(212, "I'd rather use my brain than my muscles", { w: { physical: -1, tech: 1 } }),
+  bingoSquare(213, "I'm the one who fixes everyone's tech", { w: { tech: 2 } }),
+  bingoSquare(214, "I love video games and screens", { w: { tech: 1, comfort: 1 } }),
+  bingoSquare(215, "I like rules and structure", { w: { tradition: 2 } }),
+  bingoSquare(216, "Uniforms and ceremonies are cool", { w: { tradition: 2 } }),
+  bingoSquare(217, "Strict rules drive me nuts", { w: { tradition: -2 } }),
+  bingoSquare(218, "I want to see the world", { w: { travel: 2 } }),
+  bingoSquare(219, "I'd love to live overseas", { w: { travel: 2 } }),
+  bingoSquare(220, "I want to stay near my family", { w: { travel: -2, homeland: 1 } }),
+  bingoSquare(221, "I want to help people in disasters", { w: { homeland: 2 } }),
+  bingoSquare(222, "I'd want to be on the front line", { w: { combat: 2 } }),
+  bingoSquare(223, "I'd rather not be in combat", { w: { combat: -2 } }),
+  bingoSquare(224, "I want lots of job options", { w: { scale: 2 } }),
+  bingoSquare(225, "I like small, close teams", { w: { scale: -2 } }),
+  bingoSquare(226, "I need my comfort: AC, Wi-Fi, a real bed", { w: { comfort: 2 } }),
+  bingoSquare(227, "Camping in the rain sounds fun", { w: { comfort: -2, land: 1 } }),
+  bingoSquare(228, "I hate being cold, wet or dirty", { w: { comfort: 2, land: -1 } }),
+  bingoSquare(229, "I'd rather stay on dry land", { w: { sea: -2 } }),
+  bingoSquare(230, "I'm not really an outdoors person", { w: { land: -2 } }),
+  bingoSquare(231, "Flying makes me nervous", { w: { air: -2 } }),
+  bingoSquare(232, "Space doesn't do much for me", { w: { space: -2 } }),
+  bingoSquare(233, "I'm not big on working out", { w: { physical: -2 } }),
+  bingoSquare(234, "I'm not a computer person", { w: { tech: -2 } }),
+  bingoSquare(235, "I like a relaxed, chill vibe", { w: { tradition: -2, comfort: 1 } }),
+  bingoSquare(236, "I'm a homebody", { w: { travel: -2 } }),
+  bingoSquare(237, "I'd rather serve overseas than at home", { w: { homeland: -2, travel: 1 } }),
+  bingoSquare(238, "I can sleep anywhere, anytime", { w: { comfort: -2, physical: 1 } }),
+  bingoSquare(239, "I want to be part of something huge", { w: { scale: 2 } }),
+  // Job interests.
+  bingoSquare(240, "I'd want to save lives as a medic", { w: { homeland: 1 }, i: { medical: 2 } }),
+  bingoSquare(241, "I like building things", { i: { build: 2 } }),
+  bingoSquare(242, "I like working on engines and cars", { w: { tech: 1 }, i: { mechanic: 2 } }),
+  bingoSquare(243, "I'm into hacking and cybersecurity", { w: { tech: 2 }, i: { cyber: 2 } }),
+  bingoSquare(244, "I like solving mysteries", { i: { intel: 2 } }),
+  bingoSquare(245, "I'd want to be a cop", { w: { homeland: 1 }, i: { law: 2 } }),
+  bingoSquare(246, "Special forces is my dream", { w: { physical: 1 }, i: { elite: 2 } }),
+  bingoSquare(247, "I'm a great planner and organizer", { i: { logistics: 2 } }),
+  bingoSquare(248, "I like radios and gadgets", { i: { comms: 2 } }),
+  bingoSquare(249, "I'd want to be in the infantry", { w: { combat: 1, land: 1 }, i: { infantry: 2 } }),
+  bingoSquare(250, "I like weapons and shooting", { i: { weapons: 2 } }),
+  bingoSquare(251, "I'd want to work on aircraft", { w: { air: 1 }, i: { aviation: 1, mechanic: 1 } }),
+  // Enlisted or officer.
+  bingoSquare(260, "I want to lead people", { k: { officer: 2 } }),
+  bingoSquare(261, "I'd rather do the hands-on work", { k: { enlisted: 2 } }),
+  bingoSquare(262, "I have or plan to get a 4-year degree", { k: { officer: 2 } }),
+  bingoSquare(263, "I want to start right after high school", { k: { enlisted: 2 } }),
+  // Service type.
+  bingoSquare(270, "I want the military full-time", { c: { active: 2 } }),
+  bingoSquare(271, "I want to keep my civilian job or school", { c: { reserve: 2, guard: 1 } }),
+  bingoSquare(272, "I'd want to help my own state in emergencies", { w: { homeland: 1 }, c: { guard: 2 } }),
+  bingoSquare(273, "I don't want to move every few years", { c: { guard: 1, reserve: 1 } }),
+];
+
+// Every question and bingo square, for looking up ids in share links.
+const ALL_QUESTIONS = [...POOL, ...BINGO_POOL];
+
 const COMPONENTS = {
   active: {
     name: "Active Duty",
