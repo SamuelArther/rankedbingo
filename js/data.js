@@ -1047,6 +1047,15 @@ const DETAILS = {
   },
 };
 
+// A typical day for many active-duty members, by branch. Times are
+// approximate and vary a lot by job, unit and deployment.
+DETAILS.army.day = [["5:30", "Wake up"], ["6:30", "PT (physical training) with your unit"], ["7:45", "Shower and breakfast"], ["9:00", "Formation, then work in your job: the motor pool, clinic, office, range or field"], ["12:00", "Lunch"], ["13:00", "More job work and training"], ["17:00", "Final formation, then free time: gym, dinner, online classes"]];
+DETAILS.usmc.day = [["5:00", "Reveille"], ["6:00", "PT, often a hard group workout or run"], ["7:15", "Chow"], ["8:00", "Formation, uniform and gear checks, then work in your MOS"], ["11:30", "Chow"], ["12:30", "Training: weapons, tactics, classes or field work"], ["16:30", "Secured for the day, unless you have duty"]];
+DETAILS.navy.day = [["6:00", "Reveille (at sea, the day runs on watches)"], ["6:30", "Breakfast on the mess deck"], ["7:30", "Quarters: muster with your division and get the plan"], ["8:00", "Work in your rating: maintenance, operations or watchstanding"], ["11:30", "Lunch"], ["13:00", "Drills (fire, flooding, man overboard) and more work"], ["16:00", "In port, most people head home unless it's their duty day; at sea, watches continue around the clock"]];
+DETAILS.af.day = [["6:30", "PT on your own or with your unit"], ["7:30", "Start your shift: days, swings or mids depending on the job"], ["11:30", "Lunch at the dining facility"], ["12:30", "Back to work: aircraft, networks, clinic, security and more"], ["16:30", "Off: gym, base amenities, or classes toward your Community College of the Air Force degree"]];
+DETAILS.sf.day = [["Shift start", "Crew briefing: status of the satellites, systems and any threats"], ["On shift", "Run satellite contacts, watch missile warning or space tracking, and log everything"], ["Mid-shift", "Training, checklists and exercises with the crew"], ["Shift end", "Hand over to the next crew"], ["Days off", "Rotating schedules often mean several days off between shift blocks"]];
+DETAILS.cg.day = [["Duty day", "At a small boat station you might be on duty for 24 hours, sleeping at the station"], ["8:00", "Morning brief, then boat checks and maintenance"], ["10:00", "Training underway: boat handling, towing, rescue drills"], ["Anytime", "A search-and-rescue call can come in at any hour"], ["Off duty", "After a duty day you usually go home; on a cutter you'd stand watches on patrols lasting weeks"]];
+
 // Longer descriptions for the service type pages.
 const COMPONENT_DETAILS = {
   active: {

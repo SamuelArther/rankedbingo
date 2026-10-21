@@ -22,7 +22,7 @@ function el(tag, attrs = {}, ...children) {
     else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
     else node.setAttribute(k, v === true ? "" : v);
   }
-  for (const c of children.flat()) {
+  for (const c of children.flat(Infinity)) {
     if (c != null) node.append(c.nodeType ? c : document.createTextNode(c));
   }
   return node;
@@ -102,11 +102,16 @@ function render() {
   else if (route.page === "shared") renderShared();
   else if (route.page === "compare") renderCompare();
   else if (route.page === "fun") renderFun();
+  else if (route.page === "jobs") renderJobs();
+  else if (route.page === "pay") renderPay();
+  else if (route.page === "join") renderJoin();
+  else if (route.page === "job") renderJob();
   else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) renderQuestion();
   else renderResults();
-  const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training", shared: "Shared result", compare: "Compare results", fun: "Fun" };
-  const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name : titles[route.page];
+  const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training", shared: "Shared result", compare: "Compare results", fun: "Fun", pay: "Ranks & pay", join: "Can I join?" };
+  const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name
+    : route.page === "jobs" || route.page === "job" ? `${BRANCHES[route.branch].name} jobs` : titles[route.page];
   document.title = pageTitle ? `${pageTitle} · Ranked Bingo` : "Ranked Bingo";
   window.scrollTo({ top: 0 });
 }
@@ -408,13 +413,18 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
     el("p", { class: "muted", style: "margin:8px 0 0; font-size:14px" },
       "Not set in stone: enlisted members can become officers later through commissioning programs, and NCOs lead plenty of people too."),
 
+    el("div", { class: "section-title" }, "Questions to ask a recruiter"),
+    el("ol", { class: "steps compact" }, recruiterQuestions(r).map((q) => el("li", {}, q))),
+    el("p", { class: "muted", style: "font-size:13px" }, "Talk to recruiters from more than one branch, and get anything they promise in writing."),
+
     mine ? shareSection(r) : null,
 
     el("div", { class: "actions" },
       mine
         ? [el("button", { class: "primary", onclick: () => { newQuiz("full"); startQuiz("full"); } }, "Take it again"),
            el("button", { onclick: () => { newQuiz("quick"); startQuiz("quick"); } }, "Quick mode (15 questions)"),
-           el("button", { onclick: (e) => copyResult(e, r) }, "Copy my result")]
+           el("button", { onclick: (e) => copyResult(e, r) }, "Copy my result"),
+           el("button", { onclick: () => window.print() }, "Print / save as PDF")]
         : el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz yourself"),
       el("a", { class: "button", href: branchLink(top.id, tracks[0].id, components[0].id) }, `Explore the ${info.name}`)),
   );
@@ -888,8 +898,11 @@ function parseRoute() {
     route.nameA = params.get("a");
     route.nameB = params.get("b");
   }
-  if (route.page === "branch" && !route.branch) route.page = "branches";
-  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun"].includes(route.page)) route.page = "quiz";
+  // Full job lists: #/jobs/<branch>?track=... and #/job/<branch>/<job id>.
+  route.jobTrack = params.get("track");
+  route.jobId = route.page === "job" ? decodeURIComponent(parts[2] || "") : null;
+  if ((route.page === "branch" || route.page === "jobs" || route.page === "job") && !route.branch) route.page = "branches";
+  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join"].includes(route.page)) route.page = "quiz";
 }
 
 function branchLink(branch, track = "enlisted", type = "active") {
@@ -898,8 +911,8 @@ function branchLink(branch, track = "enlisted", type = "active") {
 
 function renderNav() {
   const nav = document.getElementById("nav");
-  const tabs = [["quiz", "Quiz"], ["branches", "Branches"], ["types", "Service types"], ["training", "Boot camp & training"], ["fun", "Fun"]];
-  const current = route.page === "branch" ? "branches" : route.page;
+  const tabs = [["quiz", "Quiz"], ["branches", "Branches"], ["types", "Service"], ["training", "Training"], ["pay", "Pay"], ["join", "Join"], ["fun", "Fun"]];
+  const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page;
   nav.replaceChildren(
     el("a", { class: "brand", href: "#/quiz" }, "Ranked Bingo"),
     el("div", { class: "tabs" }, tabs.map(([id, label]) =>
@@ -973,6 +986,9 @@ function renderBranch() {
     el("div", { class: "section-title" }, "What life is like"),
     el("p", {}, d.life),
     el("ul", { class: "list good" }, d.expect.map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x)))),
+    el("div", { class: "section-title" }, "A day in the life"),
+    el("ol", { class: "timeline", style: `--c:${info.color}` }, d.day.map(([t, x]) => el("li", {}, el("span", { class: "tl-date" }, t), el("span", {}, x)))),
+    el("p", { class: "muted", style: "font-size:13px" }, "A typical active-duty day. It varies a lot by job, unit, and whether you're in the field, at sea or deployed."),
     el("div", { class: "two-col" },
       el("div", {}, el("div", { class: "section-title" }, "Good fit if"),
         el("ul", { class: "list good" }, d.fit.map((x) => el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, x))))),
@@ -995,8 +1011,8 @@ function renderBranch() {
       el("div", { class: "section-title" }, "Your path, step by step"),
       el("ol", { class: "steps" }, steps.map(([t, x]) => el("li", {}, el("strong", {}, t), el("p", { class: "muted", style: "margin:2px 0 0" }, x)))),
 
-      el("div", { class: "section-title" }, `${TRACKS[track].name} jobs (${jobs.length} examples)`),
-      el("div", { class: "jobs" }, jobs.map((j) => el("details", { class: "job", style: `--hero:${info.color}` },
+      el("div", { class: "section-title" }, `${TRACKS[track].name} jobs: a preview`),
+      el("div", { class: "jobs" }, jobs.slice(0, 6).map((j) => el("details", { class: "job", style: `--hero:${info.color}` },
         el("summary", {}, el("strong", { class: "job-name" }, j.n)),
         el("p", { class: "muted", style: "margin:6px 0 0" }, j.d),
         el("p", { style: "margin:6px 0 0; font-size:14px" }, `Good for people into ${joinWords(Object.keys(j.i).map((k) => INTERESTS[k]))}.`),
@@ -1005,8 +1021,13 @@ function renderBranch() {
           track === "enlisted"
             ? `${d.bootcamp.name}, then ${d.tech.name} for this job.`
             : "Commissioning program, then the officer course for this field.")))),
-      el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
-        "Job names are simplified examples. Every branch has many more jobs, and availability depends on test scores, standards and openings."),
+      FULL_LIST_READY ? [
+        el("div", { class: "actions", style: "margin-top:14px" },
+          el("a", { class: "button primary", href: jobsLink(b, track) }, `Show full list of ${info.name} jobs →`)),
+        el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
+          "The preview uses simplified names. The full list has every job with its official code."),
+      ] : el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
+        "These are examples with simplified names. A full list of every job is coming soon."),
     ),
 
     el("div", { class: "section-title" }, "Boot camp"),

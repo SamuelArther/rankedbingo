@@ -67,6 +67,7 @@ const BADGES = [
   { id: "recruiter", icon: "📣", name: "Recruiter", desc: "Share your result." },
   { id: "squad", icon: "👥", name: "Squad goals", desc: "Compare results with a friend." },
   { id: "graduate", icon: "🎓", name: "Boot camp grad", desc: "Get a bingo in boot camp bingo." },
+  { id: "phonetic", icon: "📻", name: "Phonetic pro", desc: "Score 20 in the phonetic alphabet challenge." },
 ];
 
 const BADGE_KEY = "rankedbingo.badges.v1";
@@ -262,14 +263,125 @@ function renderBootcampBingo() {
   return wrap;
 }
 
+// ---------------------------------------------------------------------------
+// Phonetic alphabet game: see a letter, type its code word. 60 seconds.
+
+const PHONETIC = {
+  A: "Alfa", B: "Bravo", C: "Charlie", D: "Delta", E: "Echo", F: "Foxtrot", G: "Golf", H: "Hotel", I: "India",
+  J: "Juliett", K: "Kilo", L: "Lima", M: "Mike", N: "November", O: "Oscar", P: "Papa", Q: "Quebec", R: "Romeo",
+  S: "Sierra", T: "Tango", U: "Uniform", V: "Victor", W: "Whiskey", X: "X-ray", Y: "Yankee", Z: "Zulu",
+};
+// Common alternate spellings that count as right.
+const PHONETIC_ALT = { alpha: "A", juliet: "J", xray: "X" };
+
+function phoneticGame() {
+  const box = el("div", { class: "phonetic" });
+  let best = loadJson("rankedbingo.phonetic.best", 0);
+  const idle = () => box.replaceChildren(
+    el("p", { class: "muted", style: "margin-top:0" }, `Type the code word for each letter (A is Alfa, B is Bravo...). You get 60 seconds. Best: ${best}.`),
+    el("div", { class: "chips" }, Object.entries(PHONETIC).map(([l, w]) => el("span", { class: "chip" }, el("strong", {}, l), ` ${w}`))),
+    el("div", { class: "actions", style: "justify-content:center" }, el("button", { class: "primary", onclick: play }, "Start")));
+  const play = () => {
+    let score = 0, letter = "", timeLeft = 60;
+    const big = el("div", { class: "phonetic-letter" });
+    const input = el("input", { class: "text-input", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false", placeholder: "Code word", "aria-label": "Code word" });
+    const status = el("div", { class: "muted" });
+    const nextLetter = () => {
+      const letters = Object.keys(PHONETIC).filter((x) => x !== letter);
+      letter = letters[Math.floor(Math.random() * letters.length)];
+      big.textContent = letter;
+      input.value = "";
+    };
+    const tick = () => { status.textContent = `${timeLeft}s left · score ${score}`; };
+    input.addEventListener("input", () => {
+      const guess = input.value.toLowerCase().replace(/[^a-z]/g, "");
+      const target = PHONETIC[letter].toLowerCase().replace(/[^a-z]/g, "");
+      if (guess === target || PHONETIC_ALT[guess] === letter) { score += 1; tick(); nextLetter(); }
+    });
+    box.replaceChildren(big, input, status);
+    nextLetter(); tick(); input.focus();
+    const timer = setInterval(() => {
+      timeLeft -= 1; tick();
+      if (timeLeft > 0 && box.isConnected) return;
+      clearInterval(timer);
+      if (!box.isConnected) return;
+      if (score > best) { best = score; saveJson("rankedbingo.phonetic.best", best); }
+      if (score >= 20) award("phonetic");
+      box.replaceChildren(el("div", { class: "bingo-head", style: "--c:var(--accent)" }, `Time! You got ${score}.`), el("p", { class: "muted", style: "text-align:center" }, `Best: ${best}`),
+        el("div", { class: "actions", style: "justify-content:center" }, el("button", { class: "primary", onclick: play }, "Play again"), el("button", { onclick: idle }, "Back")));
+    }, 1000);
+  };
+  idle();
+  return box;
+}
+
+// ---------------------------------------------------------------------------
+// History, famous people, bases and slang, from the research data.
+
+function historySection() {
+  const holder = el("div");
+  const draw = (b) => {
+    holder.replaceChildren(
+      el("div", { class: "chips", style: "margin-bottom:12px" }, ORDER.map((x) => el("button", { class: "chip chip-btn" + (x === b ? " active" : ""), onclick: () => draw(x) },
+        el("span", { class: "dot", style: `background:${BRANCHES[x].color}` }), BRANCHES[x].name))),
+      el("ol", { class: "timeline", style: `--c:${BRANCHES[b].color}` }, INFO.history[b].map((h) => el("li", {},
+        el("span", { class: "tl-date" }, new Date(h.date + "T12:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })),
+        el("span", {}, h.text)))));
+  };
+  draw("army");
+  return holder;
+}
+
+function peopleSection() {
+  return el("div", { class: "jobs" }, ORDER.map((b) => el("details", { class: "job", style: `--hero:${BRANCHES[b].color}` },
+    el("summary", {}, el("strong", { class: "job-name" }, `${BRANCHES[b].name} (${INFO.people[b].length})`)),
+    el("ul", { class: "list", style: "margin-top:8px" }, INFO.people[b].map((p) => el("li", {}, el("span", { class: "mark" }, "★"),
+      el("span", {}, el("strong", {}, p.name), ` — ${p.famousFor}. `, el("span", { class: "muted" }, p.service))))))));
+}
+
+function basesSection() {
+  return el("div", { class: "jobs" }, ORDER.map((b) => el("details", { class: "job", style: `--hero:${BRANCHES[b].color}` },
+    el("summary", {}, el("strong", { class: "job-name" }, `${BRANCHES[b].name} (${INFO.bases[b].length})`)),
+    el("ul", { class: "list", style: "margin-top:8px" }, INFO.bases[b].map((x) => el("li", {}, el("span", { class: "mark" }, "📍"),
+      el("span", {}, el("strong", {}, x.name), `, ${x.place}. `, el("span", { class: "muted" }, x.knownFor), " ",
+        el("a", { href: `https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lon}#map=10/${x.lat}/${x.lon}`, target: "_blank", rel: "noopener" }, "Map ↗"))))))));
+}
+
+function slangSection() {
+  const search = el("input", { class: "text-input", type: "search", placeholder: "Search slang", "aria-label": "Search slang" });
+  const list = el("dl", { class: "req" });
+  const draw = () => {
+    const q = search.value.trim().toLowerCase();
+    list.replaceChildren(...INFO.slang.filter((x) => !q || `${x.term} ${x.meaning}`.toLowerCase().includes(q)).flatMap((x) => [
+      el("dt", {}, x.term, x.branch !== "all" && BRANCHES[x.branch] ? el("span", { class: "muted" }, ` · ${BRANCHES[x.branch].name}`) : null),
+      el("dd", {}, x.meaning)]));
+  };
+  search.addEventListener("input", draw);
+  draw();
+  return el("div", {}, search, el("div", { style: "margin-top:12px" }, list));
+}
+
 function renderFun() {
-  app.append(el("div", { class: "fade-in" },
-    el("div", { class: "eyebrow" }, "Fun"),
-    el("h1", {}, "Games and extras"),
-    el("div", { class: "section-title" }, "Boot camp bingo"),
-    renderBootcampBingo(),
-    el("div", { class: "section-title" }, "Your badges"),
-    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Saved in this browser only."),
-    badgeGrid(),
-  ));
+  withInfo(() => {
+    app.append(el("div", { class: "fade-in" },
+      el("div", { class: "eyebrow" }, "Fun"),
+      el("h1", {}, "Games and extras"),
+      el("div", { class: "section-title" }, "Boot camp bingo"),
+      renderBootcampBingo(),
+      el("div", { class: "section-title" }, "Phonetic alphabet challenge"),
+      phoneticGame(),
+      el("div", { class: "section-title" }, "Military slang"),
+      slangSection(),
+      el("div", { class: "section-title" }, "History timeline"),
+      historySection(),
+      el("div", { class: "section-title" }, "Famous people who served"),
+      peopleSection(),
+      el("div", { class: "section-title" }, "Where they're based"),
+      basesSection(),
+      el("div", { class: "section-title" }, "Your badges"),
+      el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Saved in this browser only."),
+      badgeGrid(),
+      el("p", { class: "muted", style: "font-size:13px; margin-top:16px" }, "History, bases and people were researched from official branch and history sites in October 2026."),
+    ));
+  });
 }
