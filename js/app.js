@@ -1,8 +1,17 @@
 "use strict";
 
 // Skipped questions stay null in answers, so scoring simply ignores them.
-const state = { step: -1, answers: [], skipped: new Set() };
+// `orders` holds each question's option display order (options are shuffled
+// unless the question is a scale).
+const state = { step: -1, answers: [], skipped: new Set(), orders: [], mode: "full" };
 const app = document.getElementById("app");
+
+// Add ?debug to the URL to see what every answer scores, for playtesting, and
+// ?seed=N to get the same question set and order every time.
+const params = new URLSearchParams(location.search);
+const DEBUG = params.has("debug");
+const SEED = params.has("seed") ? Number(params.get("seed")) || 1 : null;
+let rng = makeRng(SEED ?? Math.floor(Math.random() * 2 ** 31));
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -19,6 +28,68 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+// ---------------------------------------------------------------------------
+// Saving progress. Stored only in this browser, so "resume later" works after
+// closing the tab, and a finished result can be compared with a friend's.
+
+const SAVE_KEY = "rankedbingo.session.v1";
+
+function save() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      ids: QUESTIONS.map((q) => q.id), answers: state.answers, skipped: [...state.skipped],
+      orders: state.orders, step: state.step, mode: state.mode,
+    }));
+  } catch { /* storage unavailable: progress just isn't kept */ }
+}
+
+function loadSaved() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const qs = s.ids.map((id) => POOL.find((q) => q.id === id));
+    if (qs.some((q) => !q) || s.orders.length !== qs.length) return null;
+    return { ...s, qs };
+  } catch {
+    return null;
+  }
+}
+
+function newQuiz(mode) {
+  QUESTIONS = pickQuestions(mode, rng);
+  state.orders = pickOrders(QUESTIONS, rng);
+  state.mode = mode;
+  state.answers = [];
+  state.skipped = new Set();
+  state.step = -1;
+}
+
+function startQuiz(mode) {
+  if (mode !== state.mode || state.step !== -1) newQuiz(mode);
+  state.step = 0;
+  save();
+  render();
+}
+
+// On load, pick up a saved quiz if there is one; otherwise draw a new one.
+(function restore() {
+  const saved = SEED == null && loadSaved();
+  if (saved) {
+    QUESTIONS = saved.qs;
+    Object.assign(state, { answers: saved.answers, skipped: new Set(saved.skipped), orders: saved.orders, mode: saved.mode });
+    // An unfinished quiz waits on the intro screen with a Continue button.
+    state.step = saved.step >= QUESTIONS.length ? QUESTIONS.length : -1;
+    state.resumeStep = saved.step >= 0 && saved.step < QUESTIONS.length ? saved.step : null;
+  } else {
+    newQuiz("full");
+  }
+})();
+
+function myResultCode() {
+  return state.step >= QUESTIONS.length ? encodeAnswers(QUESTIONS, state.answers) : null;
+}
+
+// ---------------------------------------------------------------------------
+
 function render() {
   parseRoute();
   renderNav();
@@ -28,10 +99,12 @@ function render() {
   else if (route.page === "branch") renderBranch();
   else if (route.page === "types") renderTypes();
   else if (route.page === "training") renderTraining();
+  else if (route.page === "shared") renderShared();
+  else if (route.page === "compare") renderCompare();
   else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) renderQuestion();
   else renderResults();
-  const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training" };
+  const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training", shared: "Shared result", compare: "Compare results" };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name : titles[route.page];
   document.title = pageTitle ? `${pageTitle} · Ranked Bingo` : "Ranked Bingo";
   window.scrollTo({ top: 0 });
@@ -40,15 +113,29 @@ function render() {
 window.addEventListener("hashchange", render);
 
 function renderIntro() {
+  const full = MODES.full, quick = MODES.quick;
+  const total = (m) => m.trait + m.interest + m.role + m.service;
+  const resumable = state.resumeStep != null;
   app.append(el("div", { class: "card fade-in" },
     el("div", { class: "eyebrow" }, "Ranked Bingo"),
     el("h1", {}, "Which military branch fits you?"),
     el("p", { class: "muted" },
-      `${QUESTIONS.length} questions about how you like to live, work, train and think. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. Then a few questions pick your top jobs, enlisted or officer, and Active Duty, the Reserve or the National Guard.`),
+      `Questions about how you like to live, work, train and think, drawn from a pool of ${POOL.length}, so every quiz is a little different. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. Then a few questions pick your top jobs, enlisted or officer, and Active Duty, the Reserve or the National Guard.`),
     el("div", { class: "chips branch-strip" },
       ORDER.map((b) => el("span", { class: "chip" },
         el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name))),
-    el("button", { class: "primary", onclick: () => { state.step = 0; render(); } }, "Start the quiz"),
+    resumable
+      ? el("div", { class: "note", style: "margin-bottom:14px" }, `You have a quiz in progress (question ${state.resumeStep + 1} of ${QUESTIONS.length}).`)
+      : null,
+    el("div", { class: "actions", style: "margin-top:0" },
+      resumable
+        ? el("button", { class: "primary", onclick: () => { state.step = state.resumeStep; state.resumeStep = null; render(); } }, "Continue")
+        : null,
+      el("button", { class: resumable ? "" : "primary", onclick: () => { if (resumable) newQuiz("full"); state.resumeStep = null; startQuiz("full"); } },
+        resumable ? `Start over (${total(full)} questions)` : "Start the quiz"),
+      el("button", { onclick: () => { if (resumable) newQuiz("quick"); state.resumeStep = null; startQuiz("quick"); } }, `Quick mode (${total(quick)} questions)`)),
+    el("p", { class: "muted", style: "margin:12px 0 0; font-size:14px" },
+      `The full quiz has ${total(full)} questions and takes about 8 minutes. Quick mode takes about 3 minutes but gives a rougher result.`),
   ));
 }
 
@@ -57,13 +144,18 @@ function renderQuestion() {
   const q = QUESTIONS[i];
   const chosen = state.answers[i];
   const skipped = state.skipped.has(i);
+  const order = state.orders[i];
 
-  const options = q.options.map((o, idx) => el("button", {
-    class: "option" + (chosen === idx ? " selected" : ""),
-    "aria-pressed": String(chosen === idx),
-    onclick: () => choose(idx),
-  }, el("span", { class: "key" }, String((idx + 1) % 10)),
-    el("span", {}, o.t, DEBUG ? el("span", { class: "debug" }, describeEffects(o)) : null)));
+  const options = order.map((idx, pos) => {
+    const o = q.options[idx];
+    return el("button", {
+      class: "option" + (chosen === idx ? " selected" : ""),
+      "aria-pressed": String(chosen === idx),
+      "data-i": idx,
+      onclick: () => choose(idx),
+    }, el("span", { class: "key" }, String((pos + 1) % 10)),
+      el("span", {}, o.t, DEBUG ? el("span", { class: "debug" }, describeEffects(o)) : null));
+  });
 
   app.append(el("div", { class: "card fade-in" },
     el("div", { class: "progress-row" },
@@ -71,7 +163,7 @@ function renderQuestion() {
       el("span", {}, q.topic)),
     el("div", { class: "progress" }, el("div", { style: `width:${(i / QUESTIONS.length) * 100}%` })),
     el("h2", {}, q.q),
-    DEBUG ? el("div", { class: "debug debug-live" }, "Live: " +
+    DEBUG ? el("div", { class: "debug debug-live" }, `#${q.id} · Live: ` +
       score(state.answers).slice(0, 3).map((r) => `${BRANCHES[r.id].name} ${r.pct}%`).join(" · ")) : null,
     el("div", { class: "options", role: "group", "aria-label": q.q }, options),
     el("button", { class: "skip" + (skipped ? " selected" : ""), "aria-pressed": String(skipped), onclick: skip },
@@ -82,9 +174,6 @@ function renderQuestion() {
         i === QUESTIONS.length - 1 ? "See my results" : "Next")),
   ));
 }
-
-// Add ?debug to the URL to see what every answer scores, for playtesting.
-const DEBUG = new URLSearchParams(location.search).has("debug");
 
 function describeEffects(o) {
   const fmt = (obj, label = (k) => k) => Object.entries(obj || {}).map(([k, v]) => `${label(k)} ${v > 0 ? "+" : ""}${v}`);
@@ -102,6 +191,7 @@ let advanceTimer = 0;
 function choose(idx) {
   state.answers[state.step] = idx;
   state.skipped.delete(state.step);
+  save();
   render();
   autoAdvance();
 }
@@ -109,6 +199,7 @@ function choose(idx) {
 function skip() {
   state.answers[state.step] = null;
   state.skipped.add(state.step);
+  save();
   render();
   autoAdvance();
 }
@@ -123,120 +214,162 @@ function autoAdvance() {
 function next() {
   if (state.answers[state.step] == null && !state.skipped.has(state.step)) return;
   state.step += 1;
+  save();
   render();
 }
 
 function back() {
   clearTimeout(advanceTimer);
   state.step -= 1;
+  save();
   render();
 }
 
-const MIN_ANSWERS = 10;
+function minAnswers(qs) {
+  return Math.min(10, Math.ceil(qs.length * 0.6));
+}
 
 function renderResults() {
   const answered = state.answers.filter((a) => a != null).length;
-  if (answered < MIN_ANSWERS) {
+  if (answered < minAnswers(QUESTIONS)) {
     app.append(el("div", { class: "card fade-in" },
       el("div", { class: "eyebrow" }, "Not enough intel"),
       el("h1", {}, "Answer a few more"),
       el("p", { class: "muted" },
-        `You answered ${answered} of ${QUESTIONS.length} questions. Answer at least ${MIN_ANSWERS} so there's enough to match you on.`),
+        `You answered ${answered} of ${QUESTIONS.length} questions. Answer at least ${minAnswers(QUESTIONS)} so there's enough to match you on.`),
       el("div", { class: "actions" },
         el("button", { class: "primary", onclick: () => { state.step = state.skipped.size ? Math.min(...state.skipped) : 0; render(); } }, "Go back to skipped questions"),
         el("button", { onclick: restart }, "Start over")),
     ));
     return;
   }
-  const ranked = score(state.answers);
-  const user = profile(state.answers);
+  app.append(resultView({ qs: QUESTIONS, answers: state.answers, mine: true, quick: state.mode === "quick" }));
+}
+
+// Everything computed for one result, mine or shared.
+function computeResult(qs, answers) {
+  const ranked = score(answers, qs);
   const top = ranked[0];
-  // Branches with the same rounded score are shown as a tie rather than
-  // quietly picking one on decimals.
   const tied = ranked.filter((r) => r.pct === top.pct);
+  const components = componentScore(answers, qs);
+  const tracks = trackScore(answers, qs);
+  return {
+    qs, answers, ranked, top, tied, components, tracks,
+    user: profile(answers, qs),
+    track: TRACKS[tracks[0].id],
+    options: tied.map((r) => serviceOption(r.id, components[0].id)),
+    topJob: (branch, count = 1) => topJobs(answers, branch, tracks[0].id, count, qs),
+    hasDegree: answers.some((idx, i) => idx != null && qs[i].options[idx].degree),
+  };
+}
+
+function bar(label, pct, color) {
+  const fill = el("div", { style: `background:${color}` });
+  requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = pct + "%"; }));
+  return el("div", { class: "bar-row" },
+    el("span", {}, label),
+    el("div", { class: "bar", role: "img", "aria-label": `${label} ${pct}%` }, fill),
+    el("span", { class: "num" }, pct + "%"));
+}
+
+// The full results card. `mine` adds the share and retake tools; `name` is
+// set when viewing someone else's shared result.
+function resultView({ qs, answers, mine = false, name = null, quick = false }) {
+  const r = computeResult(qs, answers);
+  const { ranked, top, tied, user, components, tracks, track, options } = r;
   const isTie = tied.length > 1;
   setBackground(top.id);
-  const names = joinWords(tied.map((r) => BRANCHES[r.id].name));
+  const names = joinWords(tied.map((x) => BRANCHES[x.id].name));
   const info = BRANCHES[top.id];
-  const components = componentScore(state.answers);
-  const tracks = trackScore(state.answers);
-  const track = TRACKS[tracks[0].id];
-  const hasDegree = state.answers.some((idx, i) => idx != null && QUESTIONS[i].options[idx].degree);
-  const options = tied.map((r) => serviceOption(r.id, components[0].id));
-  const jobNotes = tied.map((r) => interestNote(state.answers, r.id)).filter(Boolean);
+  const you = mine ? "you" : (name || "they");
+  const your = mine ? "your" : (name ? `${name}'s` : "their");
+  const jobNotes = tied.map((x) => interestNote(answers, x.id, qs)).filter(Boolean);
   const strongest = Object.entries(user)
     .filter(([, u]) => Math.abs(u.value) >= 1)
     .sort((a, b) => b[1].weight * Math.abs(b[1].value) - a[1].weight * Math.abs(a[1].value))
     .slice(0, 6);
 
-  const why = tied.flatMap((r) => fits(user, r.id).slice(0, isTie ? 3 : 5)
-    .map((w) => `You lean toward ${w}, and so does the ${BRANCHES[r.id].name}.`));
-  const headsUp = tied.flatMap((r) => clashes(user, r.id).slice(0, isTie ? 2 : 3));
+  const why = tied.flatMap((x) => fits(user, x.id).slice(0, isTie ? 3 : 5)
+    .map((w) => `${capitalize(you)} lean${mine || !name ? "" : "s"} toward ${w}, and so does the ${BRANCHES[x.id].name}.`));
+  const headsUp = tied.flatMap((x) => clashes(user, x.id).slice(0, isTie ? 2 : 3))
+    .map((h) => mine ? h : h.replace(", but you leaned", `, but ${you} leaned`));
 
-  const jobCards = tied.flatMap((r) => {
-    const b = BRANCHES[r.id];
-    return topJobs(state.answers, r.id, tracks[0].id, isTie ? 2 : 3).map((j, n) =>
+  const jobCards = tied.flatMap((x) => {
+    const b = BRANCHES[x.id];
+    return r.topJob(x.id, isTie ? 2 : 3).map((j, n) =>
       el("div", { class: "job", style: `--hero:${b.color}` },
         el("div", { class: "job-path" }, `#${n + 1} · ${b.name} · ${track.name}`),
         el("strong", { class: "job-name" }, j.n),
         el("p", { class: "muted", style: "margin:4px 0 0" }, j.d),
         j.shared.length ? el("p", { style: "margin:6px 0 0; font-size:14px" },
-          `Fits your interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null,
-        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "After you get out: "), civilianCareers(j).join(", ")),
-        el("a", { href: branchLink(r.id, tracks[0].id, components[0].id), style: "display:inline-block; margin-top:8px; font-size:14px" }, "See this path →")));
-  });
-
-  const bars = ranked.map((r) => {
-    const fill = el("div", { style: `background:${BRANCHES[r.id].color}` });
-    requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = r.pct + "%"; }));
-    return el("div", { class: "bar-row" },
-      el("span", {}, BRANCHES[r.id].name),
-      el("div", { class: "bar", role: "img", "aria-label": `${BRANCHES[r.id].name} ${r.pct}%` }, fill),
-      el("span", { class: "num" }, r.pct + "%"));
+          `Fits ${your} interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null,
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "After getting out: "), civilianCareers(j).join(", ")),
+        el("a", { href: branchLink(x.id, tracks[0].id, components[0].id), style: "display:inline-block; margin-top:8px; font-size:14px" }, "See this path →")));
   });
 
   // Every other branch within 10 points of the top is shown as a close match;
   // otherwise just the runner-up.
   const rest = ranked.slice(tied.length);
-  const closeOnes = rest.filter((r) => top.pct - r.pct <= 10);
+  const closeOnes = rest.filter((x) => top.pct - x.pct <= 10);
   const others = closeOnes.length ? closeOnes : rest.slice(0, 1);
-  const otherCards = others.map((r) => {
-    const b = BRANCHES[r.id];
-    const reasons = fits(user, r.id).slice(0, 2);
+  const otherCards = others.map((x) => {
+    const b = BRANCHES[x.id];
+    const reasons = fits(user, x.id).slice(0, 2);
     return el("div", { class: "runner-up", style: `border-left:4px solid ${b.color}` },
-      el("strong", {}, `${b.name} (${r.pct}%)`),
+      el("strong", {}, `${b.name} (${x.pct}%)`),
       el("p", { class: "muted", style: "margin:6px 0 0" }, b.tagline),
       reasons.length ? el("p", { style: "margin:8px 0 0; font-size:14px" },
-        `Shares your lean toward ${reasons.join(" and ")}.`) : null,
+        `Shares ${your} lean toward ${reasons.join(" and ")}.`) : null,
       el("p", { style: "margin:8px 0 0; font-size:14px" },
-        "Top role: ", el("strong", {}, topJobs(state.answers, r.id, tracks[0].id, 1)[0].n)));
+        "Top role: ", el("strong", {}, r.topJob(x.id)[0].n)));
   });
 
-  app.append(el("div", { class: "card results fade-in" },
-    el("div", { class: "eyebrow" }, isTie ? "It's a tie!" : "Your best match"),
+  // "Why not ___?": every branch row opens to show what fits and what doesn't.
+  const branchRows = ranked.map((x) => {
+    const b = BRANCHES[x.id];
+    const good = fits(user, x.id).slice(0, 3);
+    const bad = clashes(user, x.id).slice(0, 3);
+    return el("details", { class: "why-row" },
+      el("summary", {}, bar(b.name, x.pct, b.color)),
+      el("div", { class: "why-body" },
+        good.length
+          ? el("ul", { class: "list good" }, good.map((g) => el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, capitalize(g)))))
+          : el("p", { class: "muted", style: "margin:0" }, `Not much in common with ${your} strongest leanings.`),
+        bad.length
+          ? el("ul", { class: "list warn", style: "margin-top:8px" }, bad.map((g) => el("li", {}, el("span", { class: "mark" }, "!"), el("span", {}, mine ? g : g.replace(", but you leaned", `, but ${you} leaned`)))))
+          : null,
+        el("a", { href: branchLink(x.id, tracks[0].id, components[0].id), style: "font-size:14px" }, `Explore the ${b.name} →`)));
+  });
+
+  return el("div", { class: "card results fade-in" },
+    el("div", { class: "eyebrow" }, isTie ? "It's a tie!" : mine ? "Your best match" : `${name ? name + "'s" : "Their"} best match`),
     el("div", { class: "result-hero", style: `--hero:${info.color}` },
       el("h1", {}, names),
       el("div", { class: "pct" }, isTie ? `${top.pct}% MATCH EACH` : `${top.pct}% MATCH`),
       isTie
-        ? el("p", { style: "margin-top:12px" }, "Your answers fit these branches equally well, so both are worth a serious look.")
+        ? el("p", { style: "margin-top:12px" }, "These branches fit equally well, so both are worth a serious look.")
         : el("p", { style: "margin-top:12px" }, info.tagline),
       el("p", { style: "margin:0" }, isTie ? "Best ways to serve: " : "Best way to serve: ",
         el("strong", {}, options.map((o) => `${o.title}, ${track.name}`).join(" or ")))),
-    tied.map((r) => el("p", {}, isTie ? el("strong", {}, BRANCHES[r.id].name + ": ") : null, BRANCHES[r.id].about)),
+    quick ? el("div", { class: "note", style: "margin-bottom:14px" }, "Quick mode result: fewer questions means a rougher estimate. Take the full quiz for a sharper one.") : null,
+    tied.map((x) => el("p", {}, isTie ? el("strong", {}, BRANCHES[x.id].name + ": ") : null, BRANCHES[x.id].about)),
 
-    el("div", { class: "section-title" }, "Top roles for you"),
+    el("div", { class: "section-title" }, mine ? "Top roles for you" : "Top roles"),
     el("div", { class: "jobs" }, jobCards),
     jobNotes.map((n) => el("div", { class: "note", style: "margin-top:12px" }, n)),
     el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
       "Job names are simplified. Every branch has many more jobs, and which ones you can get depends on test scores, physical standards and openings. Civilian careers are common paths, and some need extra licenses or school."),
 
     strongest.length ? [
-      el("div", { class: "section-title" }, "Your profile"),
+      el("div", { class: "section-title" }, mine ? "Your profile" : "Profile"),
       el("div", { class: "chips" }, strongest.map(([t, u]) => el("span", { class: "chip" }, capitalize(phrase(t, u.value))))),
     ] : null,
 
+    el("div", { class: "section-title" }, "Trait map"),
+    radarSection(user, top.id),
+
     why.length ? [
-      el("div", { class: "section-title" }, "Why you matched"),
+      el("div", { class: "section-title" }, mine ? "Why you matched" : "Why it matched"),
       el("ul", { class: "list good" }, why.map((w) =>
         el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, w)))),
     ] : null,
@@ -248,68 +381,185 @@ function renderResults() {
     ] : null,
 
     el("div", { class: "section-title" }, "All branches"),
-    el("div", { class: "bars" }, bars),
+    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Tap a branch to see why it ranked where it did."),
+    el("div", { class: "bars" }, branchRows),
 
     el("div", { class: "section-title" }, closeOnes.length ? "Also a close match" : "Runner-up"),
     closeOnes.length ? el("p", { class: "muted", style: "font-size:14px" },
-      `${closeOnes.length === 1 ? "This branch is" : "These branches are"} within 10 points of your top match, so ${closeOnes.length === 1 ? "it's" : "they're"} worth a look too.`) : null,
+      `${closeOnes.length === 1 ? "This branch is" : "These branches are"} within 10 points of the top match, so ${closeOnes.length === 1 ? "it's" : "they're"} worth a look too.`) : null,
     el("div", { style: "display:grid; gap:10px" }, otherCards),
 
     el("div", { class: "section-title" }, "Service type"),
-    el("div", { class: "bars" }, components.map((r) => {
-      const fill = el("div", { style: "background:var(--accent)" });
-      requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = r.pct + "%"; }));
-      return el("div", { class: "bar-row" },
-        el("span", {}, COMPONENTS[r.id].name),
-        el("div", { class: "bar", role: "img", "aria-label": `${COMPONENTS[r.id].name} ${r.pct}%` }, fill),
-        el("span", { class: "num" }, r.pct + "%"));
-    })),
+    el("div", { class: "bars" }, components.map((x) => bar(COMPONENTS[x.id].name, x.pct, "var(--accent)"))),
     el("p", { style: "margin:14px 0 0" }, el("strong", {}, COMPONENTS[components[0].id].name + ": "), COMPONENTS[components[0].id].about),
     options.filter((o) => o.note).map((o) => el("div", { class: "note", style: "margin-top:12px" }, o.note)),
 
     el("div", { class: "section-title" }, "Enlisted or officer"),
-    el("div", { class: "bars" }, tracks.map((r) => {
-      const fill = el("div", { style: "background:var(--accent)" });
-      requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = r.pct + "%"; }));
-      return el("div", { class: "bar-row" },
-        el("span", {}, TRACKS[r.id].name),
-        el("div", { class: "bar", role: "img", "aria-label": `${TRACKS[r.id].name} ${r.pct}%` }, fill),
-        el("span", { class: "num" }, r.pct + "%"));
-    })),
+    el("div", { class: "bars" }, tracks.map((x) => bar(TRACKS[x.id].name, x.pct, "var(--accent)"))),
     el("p", { style: "margin:14px 0 0" }, el("strong", {}, track.name + ": "), track.about),
-    hasDegree && tracks[0].id === "enlisted"
-      ? el("div", { class: "note", style: "margin-top:12px" }, "You said you already have a degree. Your answers lean enlisted, but with a degree you could also apply to become an officer through officer candidate or training school, so ask a recruiter about both.")
+    r.hasDegree && tracks[0].id === "enlisted"
+      ? el("div", { class: "note", style: "margin-top:12px" }, `${mine ? "You said you already have" : "They already have"} a degree. The answers lean enlisted, but with a degree there's also the option to become an officer through officer candidate or training school, so ask a recruiter about both.`)
       : null,
     el("p", { class: "muted", style: "margin:8px 0 0; font-size:14px" },
       "Not set in stone: enlisted members can become officers later through commissioning programs, and NCOs lead plenty of people too."),
 
+    mine ? shareSection(r) : null,
+
     el("div", { class: "actions" },
-      el("button", { class: "primary", onclick: restart }, "Take it again"),
-      el("button", { onclick: copyResult }, "Copy my result"),
+      mine
+        ? [el("button", { class: "primary", onclick: restart }, "Take it again"),
+           el("button", { onclick: (e) => copyResult(e, r) }, "Copy my result")]
+        : el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz yourself"),
       el("a", { class: "button", href: branchLink(top.id, tracks[0].id, components[0].id) }, `Explore the ${info.name}`)),
-  ));
+  );
 }
 
-function restart() {
-  state.step = -1;
-  state.answers = [];
-  state.skipped.clear();
-  render();
+// ---------------------------------------------------------------------------
+// Trait radar: the user's 12 traits against a chosen branch's profile.
+
+const TRAIT_SHORT = {
+  sea: "Sea", land: "Land", air: "Air", space: "Space", physical: "Physical", tech: "Tech",
+  tradition: "Discipline", travel: "Travel", homeland: "Home front", combat: "Combat", scale: "Big org", comfort: "Comfort",
+};
+
+function radarSection(user, initial) {
+  const holder = el("div", { class: "radar-wrap" });
+  const chips = el("div", { class: "chips", style: "justify-content:center" });
+  const draw = (branch) => {
+    holder.replaceChildren(radarSvg(user, branch));
+    chips.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.b === branch));
+  };
+  ORDER.forEach((b) => chips.append(el("button", { class: "chip chip-btn", "data-b": b, onclick: () => draw(b) },
+    el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name)));
+  draw(initial);
+  return el("div", {},
+    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Green is you. Pick a branch to lay its profile over yours. The farther out, the stronger the lean. Untested traits sit in the middle."),
+    holder, chips);
 }
 
-async function copyResult(e) {
-  const ranked = score(state.answers);
-  const tied = ranked.filter((r) => r.pct === ranked[0].pct);
-  const componentId = componentScore(state.answers)[0].id;
-  const trackId = trackScore(state.answers)[0].id;
-  const picks = tied.map((r) => {
-    const job = topJobs(state.answers, r.id, trackId, 1)[0];
-    return `${serviceOption(r.id, componentId).title}, ${TRACKS[trackId].name} (top role: ${job.n})`;
+function radarSvg(user, branch) {
+  const ns = "http://www.w3.org/2000/svg";
+  const size = 340, c = size / 2, R = 118;
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+  svg.setAttribute("class", "radar");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `Your traits compared with the ${BRANCHES[branch].name}`);
+  const add = (tag, attrs, text) => {
+    const n = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    svg.append(n);
+    return n;
+  };
+  const angle = (i) => (Math.PI * 2 * i) / TRAIT_IDS.length - Math.PI / 2;
+  const point = (i, v) => {
+    const r = ((v + 2) / 4) * R;
+    return [c + r * Math.cos(angle(i)), c + r * Math.sin(angle(i))];
+  };
+  for (const ring of [-2, -1, 0, 1, 2]) {
+    add("polygon", { points: TRAIT_IDS.map((_, i) => point(i, ring).join(",")).join(" "), class: ring === 0 ? "radar-ring mid" : "radar-ring" });
+  }
+  TRAIT_IDS.forEach((t, i) => {
+    const [x, y] = point(i, 2);
+    add("line", { x1: c, y1: c, x2: x, y2: y, class: "radar-axis" });
+    const [lx, ly] = point(i, 2.75);
+    add("text", { x: lx, y: ly, class: "radar-label", "text-anchor": Math.abs(lx - c) < 8 ? "middle" : lx > c ? "start" : "end", "dominant-baseline": "middle" }, TRAIT_SHORT[t]);
   });
-  const header = tied.length > 1
-    ? ["My Ranked Bingo result: a tie!", ...picks]
-    : [`My Ranked Bingo result: ${picks[0]}`];
-  const text = [...header, ...ranked.map((r) => `${BRANCHES[r.id].name}: ${r.pct}%`)].join("\n");
+  const shape = (values, cls, color) => add("polygon", {
+    points: TRAIT_IDS.map((t, i) => point(i, values[t]).join(",")).join(" "),
+    class: cls, style: `--c:${color}`,
+  });
+  shape(BRANCHES[branch].traits, "radar-shape branch", BRANCHES[branch].color);
+  shape(Object.fromEntries(TRAIT_IDS.map((t) => [t, user[t] ? user[t].value : 0])), "radar-shape you", "var(--accent)");
+  return svg;
+}
+
+// ---------------------------------------------------------------------------
+// Sharing: links, compare, image card.
+
+function siteUrl() {
+  return location.href.split("#")[0].split("?")[0].replace(/index.html$/, "");
+}
+
+function shareLink(code, name) {
+  return `${siteUrl()}#/r/${code}${name ? "?n=" + encodeURIComponent(name) : ""}`;
+}
+
+// Phones and tablets get the system share sheet; desktops copy or download.
+const CAN_SHARE = Boolean(navigator.share) && matchMedia("(pointer: coarse)").matches;
+
+function cleanName(s) {
+  return (s || "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 20);
+}
+
+function shareSection(r) {
+  const code = encodeAnswers(r.qs, r.answers);
+  let name = "";
+  try { name = localStorage.getItem("rankedbingo.name") || ""; } catch { /* ignore */ }
+  const nameInput = el("input", { class: "text-input", type: "text", maxlength: "20", placeholder: "Your name (optional)", value: name, "aria-label": "Your name (optional)" });
+  const status = el("span", { class: "muted", style: "font-size:14px" });
+  const getName = () => {
+    const n = cleanName(nameInput.value);
+    try { localStorage.setItem("rankedbingo.name", n); } catch { /* ignore */ }
+    return n;
+  };
+  const flash = (msg) => { status.textContent = msg; setTimeout(() => { status.textContent = ""; }, 2500); };
+
+  const friendInput = el("input", { class: "text-input", type: "text", placeholder: "Paste a friend's result link", "aria-label": "Friend's result link" });
+  const compare = () => {
+    const m = friendInput.value.match(/#\/r\/([0-9a-z-]+)(?:\?n=([^&\s]*))?/i);
+    if (!m || !decodeAnswers(m[1])) { flash("That doesn't look like a Ranked Bingo result link."); return; }
+    const me = getName();
+    location.hash = `#/compare/${code}/${m[1]}?a=${encodeURIComponent(me || "You")}&b=${encodeURIComponent(m[2] ? decodeURIComponent(m[2]) : "Friend")}`;
+  };
+
+  // Live preview of the share card, in long (story) or square format.
+  let format = "long";
+  const preview = el("img", { class: "card-preview long", alt: "Your share card" });
+  const formatButtons = el("div", { class: "seg" });
+  let refreshTimer = 0;
+  const refresh = () => {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(async () => {
+      const blob = await cardBlob(r, cleanName(nameInput.value), format);
+      if (preview.src) URL.revokeObjectURL(preview.src);
+      preview.src = URL.createObjectURL(blob);
+      preview.className = "card-preview " + format;
+    }, 150);
+    formatButtons.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.f === format));
+  };
+  for (const [f, label] of [["long", "Long"], ["wide", "Wide"], ["square", "Square"]]) {
+    formatButtons.append(el("button", { class: "seg-item", "data-f": f, onclick: () => { format = f; refresh(); } }, label));
+  }
+  nameInput.addEventListener("input", refresh);
+  refresh();
+
+  return el("div", { class: "share-box" },
+    el("div", { class: "section-title", style: "margin-top:0" }, "Share your result"),
+    nameInput,
+    el("div", { class: "card-preview-wrap" }, preview),
+    el("div", { class: "seg-row", style: "justify-items:center; margin-top:10px" }, formatButtons),
+    el("div", { class: "actions", style: "margin-top:10px; justify-content:center" },
+      el("button", { class: "primary", onclick: async () => {
+        const link = shareLink(code, getName());
+        if (CAN_SHARE) {
+          try { await navigator.share({ title: "My Ranked Bingo result", url: link }); return; } catch { /* fall back to copying */ }
+        }
+        try { await navigator.clipboard.writeText(link); flash("Link copied!"); } catch { prompt("Copy this link:", link); }
+      } }, "Share link"),
+      el("button", { onclick: () => shareImage(r, getName(), format, false) }, "Download image"),
+      CAN_SHARE && navigator.canShare ? el("button", { onclick: () => shareImage(r, getName(), format, true) }, "Share image") : null,
+      status),
+    el("div", { class: "section-title" }, "Compare with a friend"),
+    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Send them your link. When they finish, paste their link here."),
+    el("div", { class: "row" }, friendInput, el("button", { onclick: compare }, "Compare")));
+}
+
+async function copyResult(e, r) {
+  const picks = r.tied.map((x) => `${serviceOption(x.id, r.components[0].id).title}, ${r.track.name} (top role: ${r.topJob(x.id)[0].n})`);
+  const header = r.tied.length > 1 ? ["My Ranked Bingo result: a tie!", ...picks] : [`My Ranked Bingo result: ${picks[0]}`];
+  const text = [...header, ...r.ranked.map((x) => `${BRANCHES[x.id].name}: ${x.pct}%`), shareLink(encodeAnswers(r.qs, r.answers))].join("\n");
   const btn = e.currentTarget;
   try {
     await navigator.clipboard.writeText(text);
@@ -320,12 +570,275 @@ async function copyResult(e) {
   setTimeout(() => { btn.textContent = "Copy my result"; }, 1500);
 }
 
+function renderShared() {
+  const data = decodeAnswers(route.code);
+  if (!data) {
+    app.append(el("div", { class: "card fade-in" },
+      el("div", { class: "eyebrow" }, "Shared result"),
+      el("h1", {}, "That link doesn't work"),
+      el("p", { class: "muted" }, "The result link is broken or incomplete. Ask your friend to send it again, or take the quiz yourself."),
+      el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz")));
+    return;
+  }
+  const name = cleanName(route.name);
+  const mine = myResultCode();
+  app.append(
+    el("div", { class: "note", style: "margin-bottom:14px" },
+      `You're looking at ${name ? name + "'s" : "someone's"} result. `,
+      mine && mine !== route.code
+        ? el("a", { href: `#/compare/${mine}/${route.code}?a=You&b=${encodeURIComponent(name || "Friend")}` }, "Compare it with yours →")
+        : el("a", { href: "#/quiz" }, "Take the quiz to compare →")),
+    resultView({ qs: data.qs, answers: data.answers, name: name || null }),
+  );
+}
+
+// "You match" but "Sam matches".
+function verb(subject, base) {
+  return subject === "You" ? base : base + (base.endsWith("h") ? "es" : "s");
+}
+
+function renderCompare() {
+  const a = decodeAnswers(route.code), b = decodeAnswers(route.code2);
+  if (!a || !b) {
+    app.append(el("div", { class: "card fade-in" }, el("h1", {}, "Can't compare these"), el("p", { class: "muted" }, "One of the result links is broken."), el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz")));
+    return;
+  }
+  const names = [cleanName(route.nameA) || "Player 1", cleanName(route.nameB) || "Player 2"];
+  const ra = computeResult(a.qs, a.answers), rb = computeResult(b.qs, b.answers);
+  setBackground(ra.top.id === rb.top.id ? ra.top.id : null);
+  const sameTop = ra.top.id === rb.top.id;
+
+  // Traits both lean the same way on, and the biggest difference.
+  const both = TRAIT_IDS.filter((t) => ra.user[t] && rb.user[t] && Math.abs(ra.user[t].value) >= 0.75 && Math.abs(rb.user[t].value) >= 0.75 && Math.sign(ra.user[t].value) === Math.sign(rb.user[t].value));
+  const diffs = TRAIT_IDS.filter((t) => ra.user[t] && rb.user[t])
+    .map((t) => ({ t, gap: Math.abs(ra.user[t].value - rb.user[t].value) }))
+    .sort((x, y) => y.gap - x.gap);
+  const biggest = diffs[0] && diffs[0].gap >= 1.5 ? diffs[0] : null;
+
+  const side = (r, n, code) => el("div", { class: "job", style: `--hero:${BRANCHES[r.top.id].color}` },
+    el("div", { class: "job-path" }, n),
+    el("strong", { class: "job-name", style: "font-size:24px" }, joinWords(r.tied.map((x) => BRANCHES[x.id].name))),
+    el("div", { class: "pct", style: `color:${BRANCHES[r.top.id].color}; font:700 14px var(--mono); margin-top:4px` }, `${r.top.pct}% MATCH`),
+    el("p", { style: "margin:8px 0 0; font-size:14px" }, r.options.map((o) => `${o.title}, ${r.track.name}`).join(" or ")),
+    el("p", { style: "margin:6px 0 0; font-size:14px" }, "Top role: ", el("strong", {}, r.topJob(r.top.id)[0].n)),
+    el("a", { href: `#/r/${code}?n=${encodeURIComponent(n)}`, style: "font-size:14px; display:inline-block; margin-top:8px" }, "Full result →"));
+
+  app.append(el("div", { class: "card results fade-in" },
+    el("div", { class: "eyebrow" }, "Compare"),
+    el("h1", {}, `${names[0]} vs ${names[1]}`),
+    el("p", { style: "font-size:18px" }, sameTop
+      ? `Same top branch: you're both ${BRANCHES[ra.top.id].name} material. 🤝`
+      : `${names[0]} ${verb(names[0], "match")} the ${BRANCHES[ra.top.id].name}, and ${names[1]} ${verb(names[1], "match")} the ${BRANCHES[rb.top.id].name}.`),
+    el("div", { class: "two-col compare" }, side(ra, names[0], route.code), side(rb, names[1], route.code2)),
+    el("div", { class: "section-title" }, "All branches"),
+    el("div", { class: "table-wrap" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Branch"), el("th", {}, names[0]), el("th", {}, names[1]))),
+      el("tbody", {}, ORDER.map((id) => {
+        const pa = ra.ranked.find((x) => x.id === id).pct, pb = rb.ranked.find((x) => x.id === id).pct;
+        return el("tr", {}, el("td", {}, BRANCHES[id].name),
+          el("td", { class: pa >= pb ? "win" : "" }, pa + "%"), el("td", { class: pb >= pa ? "win" : "" }, pb + "%"));
+      })))),
+    both.length ? [
+      el("div", { class: "section-title" }, "You both lean toward"),
+      el("div", { class: "chips" }, both.map((t) => el("span", { class: "chip" }, capitalize(phrase(t, ra.user[t].value))))),
+    ] : null,
+    biggest ? [
+      el("div", { class: "section-title" }, "Biggest difference"),
+      el("p", {}, `${names[0]} ${verb(names[0], "lean")} toward ${phrase(biggest.t, ra.user[biggest.t].value)}, while ${names[1]} ${verb(names[1], "lean")} toward ${phrase(biggest.t, rb.user[biggest.t].value)}.`),
+    ] : null,
+    el("div", { class: "actions" }, el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz")),
+  ));
+}
+
+// Share cards come in three formats: "long" (1080x1920, phone story size),
+// "wide" (1920x1080, desktop) and "square" (1080x1080 with rounded corners).
+// All put the branch photo, cropped around the action, behind the branch
+// name, a small branch-colored line, the six-branch graph and the reasons.
+const CARD_FORMATS = {
+  long: { w: 1080, h: 1920, radius: 0 },
+  wide: { w: 1920, h: 1080, radius: 0 },
+  square: { w: 1080, h: 1080, radius: 72 },
+};
+
+async function renderCard(r, name, format, withPhoto) {
+  const { w: W, h: H, radius } = CARD_FORMATS[format];
+  const PAD = format === "long" ? 84 : 72;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const info = BRANCHES[r.top.id];
+  const font = (size, weight = 700, mono = false) => `${weight} ${size}px ${mono ? "ui-monospace, Consolas, monospace" : "system-ui, -apple-system, Segoe UI, sans-serif"}`;
+  const pill = (x, y, w, h, color) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(x, y, Math.max(w, h), h, h / 2);
+    ctx.fill();
+  };
+  const wrap = (text, x, y, maxW, lineH) => {
+    let line = "";
+    for (const word of text.split(" ")) {
+      const test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line, x, y); line = word; y += lineH; } else line = test;
+    }
+    ctx.fillText(line, x, y);
+    return y;
+  };
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(0, 0, W, H, radius);
+  ctx.clip();
+  ctx.fillStyle = "#0b0f0c";
+  ctx.fillRect(0, 0, W, H);
+
+  if (withPhoto && BG_IMAGES[r.top.id]) {
+    const img = new Image();
+    img.src = BG_IMAGES[r.top.id];
+    await img.decode();
+    // Cover the card, centered on the photo's focus point.
+    const [fx, fy] = BG_FOCUS[r.top.id];
+    const scale = Math.max(W / img.width, H / img.height);
+    const w = img.width * scale, h = img.height * scale;
+    const anchorX = format === "wide" ? W * 0.68 : W / 2;
+    const x = Math.min(0, Math.max(W - w, anchorX - fx * w));
+    const y = Math.min(0, Math.max(H - h, H / 2 - fy * h));
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(img, x, y, w, h);
+    ctx.globalAlpha = 1;
+  }
+  // Darker where the text sits, lighter where the photo should show: across
+  // for the wide card (text on the left), down for the others.
+  const g = format === "wide" ? ctx.createLinearGradient(0, 0, W, 0) : ctx.createLinearGradient(0, 0, 0, H);
+  const textEnd = format === "long" ? 0.68 : format === "wide" ? 0.55 : 0.6;
+  g.addColorStop(0, "rgba(11,15,12,0.82)");
+  g.addColorStop(textEnd, "rgba(11,15,12,0.62)");
+  g.addColorStop(Math.min(0.95, textEnd + 0.22), "rgba(11,15,12,0.2)");
+  g.addColorStop(1, "rgba(11,15,12,0.55)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // Branch name, as big as fits across the top.
+  const title = r.tied.map((x) => BRANCHES[x.id].name).join(" & ");
+  const textW = format === "wide" ? W * 0.6 - PAD : W - 2 * PAD;
+  let size = format === "long" ? 260 : 230;
+  ctx.font = font(size, 800);
+  while (ctx.measureText(title).width > textW && size > 70) { size -= 4; ctx.font = font(size, 800); }
+  ctx.fillStyle = "#f2f6ef";
+  ctx.textBaseline = "alphabetic";
+  const titleY = PAD + (format === "long" ? 60 : 0) + size * 0.78;
+  ctx.fillText(title, PAD - size * 0.04, titleY);
+
+  // Small rounded line in the branch color, with the match next to it.
+  const lineY = titleY + 34;
+  pill(PAD, lineY, 150, 14, info.color);
+  ctx.fillStyle = info.color;
+  ctx.font = font(format === "long" ? 32 : 28, 700, true);
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${name ? name.toUpperCase() + " · " : ""}${r.top.pct}% MATCH${r.tied.length > 1 ? " EACH" : ""}`, PAD + 176, lineY + 8);
+
+  const reasons = [...new Set(r.tied.flatMap((x) => fits(r.user, x.id)))].slice(0, 4).map(capitalize);
+  reasons.push(`Top role: ${r.topJob(r.top.id)[0].n}`);
+
+  const graph = (x0, y0, width, rowH, nameSize) => {
+    ctx.textBaseline = "middle";
+    r.ranked.forEach((x, i) => {
+      const b = BRANCHES[x.id];
+      const y = y0 + i * rowH;
+      ctx.fillStyle = "#e3eadf";
+      ctx.font = font(nameSize, 600);
+      ctx.fillText(b.name, x0, y);
+      const labelW = nameSize * 7.1;
+      const barX = x0 + labelW, barW = width - labelW - nameSize * 3;
+      pill(barX, y - 7, barW, 14, "rgba(255,255,255,0.12)");
+      pill(barX, y - 7, (barW * x.pct) / 100, 14, b.color);
+      ctx.fillStyle = "#b8c4b4";
+      ctx.font = font(nameSize - 2, 700, true);
+      ctx.fillText(`${x.pct}%`, barX + barW + 12, y);
+    });
+  };
+  const why = (x0, y0, width, textSize, lineH) => {
+    ctx.fillStyle = "#8d9a8a";
+    ctx.font = font(textSize - 5, 700, true);
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("WHY", x0, y0);
+    let y = y0 + lineH + 8;
+    ctx.font = font(textSize, 600);
+    for (const reason of reasons) {
+      ctx.fillStyle = info.color;
+      ctx.beginPath();
+      ctx.arc(x0 + 6, y - textSize * 0.36, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#e3eadf";
+      y = wrap(reason, x0 + 22, y, width - 26, lineH - 12) + lineH;
+    }
+  };
+
+  if (format === "long") {
+    // Stacked: graph across the full width, then the reasons.
+    const top = lineY + 100;
+    graph(PAD, top, W - 2 * PAD, 66, 32);
+    why(PAD, top + 6 * 66 + 50, W - 2 * PAD, 34, 56);
+  } else {
+    // Side by side, just under the name (on the left part of the wide card).
+    const top = lineY + 70;
+    const colW = (textW - 48) / 2;
+    graph(PAD, top + 14, colW, 56, 24);
+    why(PAD + colW + 48, top + 8, colW, 25, 46);
+  }
+
+  // Footer.
+  ctx.fillStyle = info.color;
+  ctx.font = font(format === "long" ? 24 : 20, 600);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(`© Ranked Bingo, ${new Date().getFullYear()}. All rights reserved.`, PAD, H - 48);
+  ctx.fillStyle = "rgba(227,234,223,0.75)";
+  ctx.textAlign = "right";
+  ctx.fillText(siteUrl().replace(/^https?:\/\//, "").replace(/\/$/, ""), W - PAD, H - 48);
+  ctx.textAlign = "left";
+  ctx.restore();
+  return canvas;
+}
+
+// Renders a card as a PNG blob. Opened from a local file the photo can't be
+// exported, so it falls back to a card without it.
+async function cardBlob(r, name, format) {
+  const toBlob = (canvas) => new Promise((resolve, reject) => {
+    try { canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("empty"))), "image/png"); } catch (err) { reject(err); }
+  });
+  try {
+    return await toBlob(await renderCard(r, name, format, true));
+  } catch {
+    return toBlob(await renderCard(r, name, format, false));
+  }
+}
+
+async function shareImage(r, name, format, useShareSheet) {
+  const blob = await cardBlob(r, name, format);
+  const file = new File([blob], `ranked-bingo-${format}.png`, { type: "image/png" });
+  if (useShareSheet && CAN_SHARE && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: "My Ranked Bingo result" }); return; } catch { /* fall back to download */ }
+  }
+  const a = el("a", { href: URL.createObjectURL(blob), download: `ranked-bingo-${format}.png` });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function restart() {
+  newQuiz(state.mode);
+  save();
+  render();
+}
+
 document.addEventListener("keydown", (e) => {
   if (e.altKey || e.ctrlKey || e.metaKey) return;
   if (route.page !== "quiz") return;
+  if (e.target.matches && e.target.matches("input, textarea")) return;
   if (state.step < 0 || state.step >= QUESTIONS.length) return;
   const n = e.key === "0" ? 10 : Number(e.key);
-  if (n >= 1 && n <= QUESTIONS[state.step].options.length) choose(n - 1);
+  const order = state.orders[state.step];
+  if (n >= 1 && n <= order.length) choose(order[n - 1]);
   else if (e.key === "s") skip();
   else if (e.key === "ArrowLeft") { if (state.step > 0) back(); }
   else if (e.key === "ArrowRight" || e.key === "Enter") next();
@@ -337,11 +850,14 @@ document.addEventListener("keydown", (e) => {
 function setBackground(branch) {
   const bg = document.getElementById("bg");
   const src = branch && BG_IMAGES[branch];
-  if (src) bg.style.backgroundImage = `url("${src}")`;
+  if (src) {
+    bg.style.backgroundImage = `url("${src}")`;
+    bg.style.backgroundPosition = BG_FOCUS[branch].map((v) => `${v * 100}%`).join(" ");
+  }
   bg.classList.toggle("on", Boolean(src));
 }
 
-const route = { page: "quiz", branch: null, track: "enlisted", type: "active" };
+const route = { page: "quiz", branch: null, track: "enlisted", type: "active", code: null, code2: null, name: null, nameA: null, nameB: null };
 
 function parseRoute() {
   const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
@@ -351,8 +867,20 @@ function parseRoute() {
   route.branch = ORDER.includes(parts[1]) ? parts[1] : null;
   route.track = TRACK_ORDER.includes(params.get("track")) ? params.get("track") : "enlisted";
   route.type = COMPONENT_ORDER.includes(params.get("type")) ? params.get("type") : "active";
+  // Shared results: #/r/<code>?n=Name and #/compare/<code>/<code>?a=Name&b=Name.
+  if (route.page === "r") {
+    route.page = "shared";
+    route.code = parts[1] || "";
+    route.name = params.get("n");
+  }
+  if (route.page === "compare") {
+    route.code = parts[1] || "";
+    route.code2 = parts[2] || "";
+    route.nameA = params.get("a");
+    route.nameB = params.get("b");
+  }
   if (route.page === "branch" && !route.branch) route.page = "branches";
-  if (!["quiz", "branches", "branch", "types", "training"].includes(route.page)) route.page = "quiz";
+  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare"].includes(route.page)) route.page = "quiz";
 }
 
 function branchLink(branch, track = "enlisted", type = "active") {
@@ -536,6 +1064,13 @@ function renderTraining() {
     el("div", { class: "jobs" }, ORDER.map((b) => trainingCard(b))),
   ));
 }
-window.branchQuiz = { DETAILS, route, QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, trackScore, serviceOption, topJobs, interestVector, JOBS, civilianCareers, CIVILIAN_OVERRIDES, state, render };
+// Exposed for automated checks. QUESTIONS is a getter because each quiz
+// draws a new set.
+window.branchQuiz = {
+  DETAILS, route, POOL, BRANCHES, ORDER, TRAITS, JOBS, CIVILIAN_OVERRIDES, state, render,
+  profile, score, fits, clashes, componentScore, trackScore, serviceOption, topJobs, interestVector,
+  civilianCareers, encodeAnswers, decodeAnswers, pickQuestions, makeRng, newQuiz, startQuiz,
+  get QUESTIONS() { return QUESTIONS; },
+};
 
 render();

@@ -27,7 +27,7 @@ const BRANCHES = {
     color: "#8fa45a",
     tagline: "The biggest branch, with a job for almost everything.",
     about: "The Army handles land operations. Because it's so big, it has a huge range of jobs: infantry, armor, artillery, medicine, engineering, logistics, intelligence, cyber, and more helicopters than any other branch.",
-    traits: { sea: -1, land: 2, air: 0, space: -1, physical: 1, tech: 0, tradition: 1, travel: 1, homeland: 0, combat: 2, scale: 2, comfort: 0 },
+    traits: { sea: -1, land: 2, air: 0, space: -1, physical: 1, tech: 1, tradition: 1, travel: 1, homeland: 1, combat: 2, scale: 2, comfort: 0 },
   },
   usmc: {
     name: "Marine Corps",
@@ -70,189 +70,195 @@ const ORDER = ["army", "usmc", "navy", "af", "sf", "cg"];
 
 // Each option nudges one or more traits. Questions are deliberately indirect,
 // so no single answer decides the result.
-const QUESTIONS = [
-  { topic: "Environment", q: "Pick the view from your workplace window.", options: [
+// The full question pool. Each quiz draws a balanced set from it (see
+// pickQuestions in logic.js). Ids are permanent because share links store
+// them; never reuse or renumber one. `fixed` keeps a scale's options in
+// order instead of shuffling them. `always` questions are in every quiz
+// because results depend on them (special ops interest, degree plans,
+// full-time or part-time).
+const POOL = [
+  { id: 1, topic: "Environment", q: "Pick the view from your workplace window.", options: [
     { t: "Endless ocean in every direction", w: { sea: 2, land: -1 } },
     { t: "Forests, deserts or mountains", w: { land: 2, sea: -1 } },
     { t: "A flight line full of aircraft", w: { air: 2 } },
     { t: "No window, just a wall of screens tracking satellites", w: { space: 2, tech: 1, physical: -1 } },
   ] },
-  { topic: "Free time", q: "A free weekend. Which trip do you pick?", options: [
+  { id: 2, topic: "Free time", q: "A free weekend. Which trip do you pick?", options: [
     { t: "Backpacking and sleeping on the ground", w: { physical: 1, comfort: -2, land: 1 } },
     { t: "Fishing or boating", w: { sea: 2 } },
     { t: "An air show or a space center", w: { air: 1, space: 1, tech: 1 } },
     { t: "A nice hotel with good Wi-Fi", w: { comfort: 2, physical: -1 } },
   ] },
-  { topic: "Sea time", q: "How do you feel about living on a ship for months?", options: [
+  { id: 3, fixed: true, topic: "Sea time", q: "How do you feel about living on a ship for months?", options: [
     { t: "Sounds like an adventure", w: { sea: 2, travel: 1 } },
     { t: "Days or weeks on a boat, sure. Months is a lot", w: { sea: 1, travel: -1 } },
     { t: "I'd rather keep my feet on the ground", w: { sea: -1 } },
     { t: "I get seasick just thinking about it", w: { sea: -2 } },
   ] },
-  { topic: "Fitness", q: "A 12-mile hike carrying a heavy pack sounds...", options: [
+  { id: 4, fixed: true, topic: "Fitness", q: "A 12-mile hike carrying a heavy pack sounds...", options: [
     { t: "Like a good day", w: { physical: 2, land: 1 } },
     { t: "Tough, but I'd push through", w: { physical: 1 } },
     { t: "Like something I'd do only if I had to", w: { physical: -1 } },
     { t: "Like a hard pass", w: { physical: -2 } },
   ] },
-  { topic: "Combat", q: "How do you feel about possibly being in direct combat?", options: [
+  { id: 5, fixed: true, topic: "Combat", q: "How do you feel about possibly being in direct combat?", options: [
     { t: "It's a big part of why I'd join", w: { combat: 2 } },
     { t: "I'd accept it if it came to that", w: { combat: 1 } },
     { t: "I'd prefer a support or technical role", w: { combat: -1, tech: 1 } },
     { t: "I want to protect and help people, not fight", w: { combat: -2, homeland: 1 } },
   ] },
-  { topic: "Tech", q: "A friend's computer stops working. You...", options: [
+  { id: 6, fixed: true, topic: "Tech", q: "A friend's computer stops working. You...", options: [
     { t: "Open it up and fix it", w: { tech: 2 } },
     { t: "Look it up and probably figure it out", w: { tech: 1 } },
     { t: "Tell them to take it to a shop", w: { tech: -1 } },
     { t: "Would rather be outside than fixing anything", w: { tech: -2, land: 1 } },
   ] },
-  { topic: "Discipline", q: "Daily inspections, perfect uniforms, marching in step:", options: [
+  { id: 7, fixed: true, topic: "Discipline", q: "Daily inspections, perfect uniforms, marching in step:", options: [
     { t: "Love it. Discipline makes me better", w: { tradition: 2 } },
     { t: "Fine with it", w: { tradition: 1 } },
     { t: "I'd put up with it", w: { tradition: -1 } },
     { t: "It would drive me up the wall", w: { tradition: -2 } },
   ] },
-  { topic: "Travel", q: "How often do you want to be away from home?", options: [
+  { id: 8, fixed: true, topic: "Travel", q: "How often do you want to be away from home?", options: [
     { t: "As much as possible", w: { travel: 2 } },
     { t: "Some deployments are fine", w: { travel: 1 } },
     { t: "Rarely", w: { travel: -1, homeland: 1 } },
     { t: "I want to stay in the U.S.", w: { travel: -2, homeland: 2 } },
   ] },
-  { topic: "Purpose", q: "Which headline would make you proudest to be part of?", options: [
+  { id: 9, topic: "Purpose", q: "Which headline would make you proudest to be part of?", options: [
     { t: "\"Rescuers pull 40 people from hurricane floodwaters\"", w: { homeland: 2, sea: 1 } },
     { t: "\"Troops secure key city overseas\"", w: { combat: 2, land: 1, travel: 1 } },
     { t: "\"Carrier group arrives to calm tensions abroad\"", w: { sea: 2, travel: 2 } },
     { t: "\"New satellites keep GPS safe from jamming\"", w: { space: 2, tech: 2 } },
     { t: "\"Airlift gets supplies across the globe in 24 hours\"", w: { air: 2, travel: 1 } },
   ] },
-  { topic: "Size", q: "Big organization or small?", options: [
+  { id: 10, fixed: true, topic: "Size", q: "Big organization or small?", options: [
     { t: "The biggest, with the most options", w: { scale: 2 } },
     { t: "Big, but not giant", w: { scale: 1 } },
     { t: "Small, where I'd stand out", w: { scale: -2 } },
   ] },
-  { topic: "Options", q: "How do you feel about picking a job?", options: [
+  { id: 11, fixed: true, topic: "Options", q: "How do you feel about picking a job?", options: [
     { t: "Give me hundreds of choices, I want to explore", w: { scale: 2, comfort: 1 } },
     { t: "A solid list is fine", w: { scale: 1 } },
     { t: "I already know exactly what I want to do", w: { scale: -1 } },
     { t: "Doesn't matter, the mission and the people matter more", w: { tradition: 2, comfort: -1 } },
   ] },
-  { topic: "Boot camp", q: "Which boot camp would you choose?", options: [
+  { id: 12, topic: "Boot camp", q: "Which boot camp would you choose?", options: [
     { t: "The longest and hardest one, no shortcuts", w: { physical: 2, tradition: 2, comfort: -2 } },
     { t: "Tough, but standard", w: { physical: 1, tradition: 1 } },
     { t: "Swimming, seamanship and survival training", w: { sea: 2, physical: 1 } },
     { t: "Shorter, then straight into technical school", w: { tech: 2, physical: -1, comfort: 1 } },
   ] },
-  { topic: "Team", q: "What's your ideal team?", options: [
+  { id: 13, topic: "Team", q: "What's your ideal team?", options: [
     { t: "A big unit with hundreds of people", w: { scale: 2 } },
     { t: "A crew of a couple dozen", w: { scale: 0, sea: 1 } },
     { t: "A small team of specialists", w: { scale: -1, tech: 1 } },
     { t: "A four-person fire team, tight like family", w: { combat: 1, physical: 1 } },
   ] },
-  { topic: "Living", q: "Pick a place to live.", options: [
+  { id: 14, topic: "Living", q: "Pick a place to live.", options: [
     { t: "A bunk on a ship with my crew", w: { sea: 2, comfort: -1 } },
     { t: "Out in the field sometimes, roughing it", w: { land: 2, comfort: -2 } },
     { t: "A nice dorm, a good gym and decent food", w: { comfort: 2 } },
     { t: "A small station in a coastal town", w: { homeland: 1, sea: 1, scale: -1 } },
   ] },
-  { topic: "Pace", q: "Pick a pace of life.", options: [
+  { id: 15, topic: "Pace", q: "Pick a pace of life.", options: [
     { t: "Ready to deploy anywhere on short notice", w: { travel: 2, combat: 1 } },
     { t: "Long missions, then long breaks", w: { sea: 1, travel: 1 } },
     { t: "A steady, predictable schedule", w: { comfort: 1, travel: -1 } },
     { t: "On call for emergencies close to home", w: { homeland: 2, travel: -1 } },
   ] },
-  { topic: "Pressure", q: "A storm hits and a boat is sinking offshore. Where do you want to be?", options: [
+  { id: 16, topic: "Pressure", q: "A storm hits and a boat is sinking offshore. Where do you want to be?", options: [
     { t: "In the helicopter heading out to pull people out", w: { homeland: 2, sea: 1, air: 1 } },
     { t: "On a ship nearby, turning to help", w: { sea: 2 } },
     { t: "Coordinating everything from the operations center", w: { tech: 1, combat: -1 } },
     { t: "Honestly, I'd rather be the one storming a beach", w: { combat: 2, sea: 1, land: 1 } },
   ] },
-  { topic: "Future", q: "What do you want to do after you get out?", options: [
+  { id: 17, topic: "Future", q: "What do you want to do after you get out?", options: [
     { t: "A tech career: IT, cyber or engineering", w: { tech: 2 } },
     { t: "Police, firefighting or EMS", w: { homeland: 2, physical: 1 } },
     { t: "A skilled trade: mechanic, electrician, welder", w: { tech: 1, comfort: -1 } },
     { t: "Aviation: airline pilot or aircraft mechanic", w: { air: 2 } },
     { t: "Leading people and running things", w: { tradition: 1, combat: 1 } },
   ] },
-  { topic: "Games", q: "Which kind of game do you pick?", options: [
+  { id: 18, topic: "Games", q: "Which kind of game do you pick?", options: [
     { t: "Squad-based shooter", w: { combat: 1, land: 1 } },
     { t: "Flight sim", w: { air: 2 } },
     { t: "Strategy, building something huge", w: { scale: 1, tech: 1 } },
     { t: "Survival or exploration", w: { physical: 1, comfort: -1 } },
     { t: "Space sim", w: { space: 2 } },
   ] },
-  { topic: "Learning", q: "How do you learn best?", options: [
+  { id: 19, topic: "Learning", q: "How do you learn best?", options: [
     { t: "Doing it physically, over and over", w: { physical: 1, tech: -1 } },
     { t: "A mix of classroom and hands-on", w: { tech: 1 } },
     { t: "Months of deep technical study", w: { tech: 2, comfort: 1 } },
     { t: "Figuring it out under pressure in the moment", w: { combat: 1, physical: 1 } },
   ] },
-  { topic: "Authority", q: "Someone in charge gives you an order you think is dumb. You...", options: [
+  { id: 20, topic: "Authority", q: "Someone in charge gives you an order you think is dumb. You...", options: [
     { t: "Do it. You trust the chain of command", w: { tradition: 2 } },
     { t: "Do it, then bring it up later", w: { tradition: 1 } },
     { t: "Ask why first", w: { tradition: -1, tech: 1 } },
     { t: "Find a smarter way to get it done", w: { tradition: -2 } },
   ] },
-  { topic: "Weather", q: "Several days outside in cold rain:", options: [
+  { id: 21, fixed: true, topic: "Weather", q: "Several days outside in cold rain:", options: [
     { t: "Bring it on", w: { physical: 2, comfort: -2, land: 1 } },
     { t: "Fine for a day or two", w: { physical: 1, comfort: -1 } },
     { t: "I'd rather be inside", w: { comfort: 1, physical: -1 } },
     { t: "Give me a climate-controlled room, please", w: { comfort: 2, space: 1 } },
   ] },
-  { topic: "Aircraft", q: "How do you feel about aircraft?", options: [
+  { id: 22, fixed: true, topic: "Aircraft", q: "How do you feel about aircraft?", options: [
     { t: "I want to fly them", w: { air: 2 } },
     { t: "I want to fix and maintain them", w: { air: 1, tech: 1 } },
     { t: "Cool, but not really my thing", w: { air: -1 } },
     { t: "I'd rather be on a boat", w: { sea: 1, air: -1 } },
   ] },
-  { topic: "Space", q: "How interested are you in space?", options: [
+  { id: 23, fixed: true, topic: "Space", q: "How interested are you in space?", options: [
     { t: "Obsessed", w: { space: 2 } },
     { t: "Pretty interested", w: { space: 1 } },
     { t: "Meh", w: { space: -1 } },
     { t: "I'd rather have my boots in the dirt", w: { space: -2, land: 1 } },
   ] },
-  { topic: "Water", q: "Could you see yourself training to jump into rough water to save someone?", options: [
+  { id: 24, fixed: true, topic: "Water", q: "Could you see yourself training to jump into rough water to save someone?", options: [
     { t: "Yes, I'd train for that", w: { sea: 2, physical: 1, homeland: 1 } },
     { t: "I can swim, but rough water? Not really", w: { sea: -1 } },
     { t: "I'm not a swimmer", w: { sea: -2 } },
   ] },
-  { topic: "Motivation", q: "What motivates you most?", options: [
+  { id: 25, topic: "Motivation", q: "What motivates you most?", options: [
     { t: "Testing myself against the hardest challenge", w: { physical: 2, tradition: 1 } },
     { t: "Protecting my community", w: { homeland: 2 } },
     { t: "Learning valuable skills", w: { tech: 1, comfort: 1 } },
     { t: "Seeing the world", w: { travel: 2 } },
     { t: "Being part of something brand new", w: { space: 1, scale: -2 } },
   ] },
-  { topic: "Identity", q: "How much does your unit's reputation matter to you?", options: [
+  { id: 26, fixed: true, topic: "Identity", q: "How much does your unit's reputation matter to you?", options: [
     { t: "Everything. I want that title for life", w: { tradition: 2, combat: 1 } },
     { t: "It matters, but the job matters more", w: { tech: 1 } },
     { t: "I just want a good job and good people", w: { comfort: 1, tradition: -1 } },
   ] },
-  { topic: "Law", q: "Would you like a job enforcing laws, like boarding ships to search for drugs?", options: [
+  { id: 27, fixed: true, topic: "Law", q: "Would you like a job enforcing laws, like boarding ships to search for drugs?", options: [
     { t: "Yes, that sounds awesome", w: { homeland: 2, sea: 1 } },
     { t: "Maybe", w: { homeland: 1 } },
     { t: "Not really", w: { homeland: -1 } },
   ] },
-  { topic: "Focus", q: "A 12-hour shift watching screens and tracking data sounds...", options: [
+  { id: 28, fixed: true, topic: "Focus", q: "A 12-hour shift watching screens and tracking data sounds...", options: [
     { t: "Peaceful, honestly", w: { tech: 1, space: 1, physical: -1 } },
     { t: "Fine once in a while", w: {} },
     { t: "Like torture. Let me move around", w: { physical: 2, tech: -1 } },
   ] },
-  { topic: "Family", q: "How important is living near family?", options: [
+  { id: 29, fixed: true, topic: "Family", q: "How important is living near family?", options: [
     { t: "Very important", w: { travel: -2, homeland: 1 } },
     { t: "Somewhat", w: { travel: -1 } },
     { t: "Not very", w: { travel: 1 } },
     { t: "I want to move far away", w: { travel: 2 } },
   ] },
   // Job interest questions score interests (i), used to pick specific roles.
-  { topic: "Job interests", q: "Which of these would you most want to learn?", options: [
+  { id: 30, topic: "Job interests", q: "Which of these would you most want to learn?", options: [
     { t: "Emergency medicine", w: { homeland: 1 }, i: { medical: 2 } },
     { t: "Construction and heavy equipment", w: {}, i: { build: 2 } },
     { t: "Fixing engines, aircraft and machines", w: { tech: 1 }, i: { mechanic: 2 } },
     { t: "Hacking and defending networks", w: { tech: 2 }, i: { cyber: 2 } },
     { t: "Flying or crewing aircraft", w: { air: 1 }, i: { aviation: 2 } },
   ] },
-  { topic: "Job interests", q: "Pick a civilian job to try for a day.", options: [
+  { id: 31, topic: "Job interests", q: "Pick a civilian job to try for a day.", options: [
     { t: "Paramedic", w: {}, i: { medical: 2 } },
     { t: "Police officer", w: { homeland: 1 }, i: { law: 2 } },
     { t: "Electrician or builder", w: {}, i: { build: 2 } },
@@ -264,85 +270,423 @@ const QUESTIONS = [
     { t: "Offshore oil rig worker", w: { sea: 2, physical: 1, comfort: -1 }, i: { mechanic: 2 } },
     { t: "SWAT officer", w: { combat: 1, homeland: 1, physical: 1 }, i: { law: 2, weapons: 1 } },
   ] },
-  { topic: "Job interests", q: "Which would feel the most rewarding?", options: [
+  { id: 32, topic: "Job interests", q: "Which would feel the most rewarding?", options: [
     { t: "Keeping a hurt person alive", w: {}, i: { medical: 2 } },
     { t: "Catching someone breaking the law", w: {}, i: { law: 2 } },
     { t: "Cracking a code nobody else could", w: { tech: 1 }, i: { intel: 1, cyber: 1 } },
     { t: "Getting supplies to people on time, every time", w: {}, i: { logistics: 2 } },
     { t: "Being first through the door", w: { combat: 1 }, i: { infantry: 2 } },
   ] },
-  { topic: "Job interests", q: "Pick a tool.", options: [
+  { id: 33, topic: "Job interests", q: "Pick a tool.", options: [
     { t: "A wrench", w: {}, i: { mechanic: 2 } },
     { t: "A rifle", w: { combat: 1 }, i: { infantry: 1, weapons: 1 } },
     { t: "A laptop", w: { tech: 1 }, i: { cyber: 2 } },
     { t: "A radio and a map", w: {}, i: { comms: 2 } },
     { t: "A medical kit", w: {}, i: { medical: 2 } },
   ] },
-  { topic: "Job interests", q: "Pick a mission for your team.", options: [
+  { id: 34, topic: "Job interests", q: "Pick a mission for your team.", options: [
     { t: "Run the radar and radios that keep everyone connected", w: {}, i: { comms: 2 } },
     { t: "Move the heavy equipment and supplies", w: {}, i: { logistics: 2 } },
     { t: "Keep the weapon systems ready to go", w: {}, i: { weapons: 2 } },
     { t: "Gather intel on what's out there", w: {}, i: { intel: 2 } },
     { t: "Lead the patrol", w: { combat: 1 }, i: { infantry: 2 } },
   ] },
-  { topic: "Job interests", q: "Special operations selection, where most people wash out:", options: [
+  { id: 35, always: true, fixed: true, topic: "Job interests", q: "Special operations selection, where most people wash out:", options: [
     { t: "That's my goal", w: { physical: 2 }, i: { elite: 4 } },
     { t: "Maybe someday", w: { physical: 1 }, i: { elite: 2 } },
     { t: "No thanks", w: {} },
   ] },
   // Role questions also score tracks (k): enlisted or officer.
-  { topic: "Role", q: "Do you plan to get a four-year college degree?", options: [
+  { id: 36, always: true, fixed: true, topic: "Role", q: "Do you plan to get a four-year college degree?", options: [
     { t: "I already have one", w: {}, k: { officer: 3 }, degree: true },
     { t: "Yes, before I join", w: {}, k: { officer: 2 } },
     { t: "Maybe, later or while I serve", w: {}, k: { enlisted: 1, officer: 1 } },
     { t: "No, I want to start right after high school", w: {}, k: { enlisted: 2 } },
   ] },
-  { topic: "Role", q: "In a group project, you're usually the one who...", options: [
+  { id: 37, topic: "Role", q: "In a group project, you're usually the one who...", options: [
     { t: "Plans it and hands out the tasks", w: {}, k: { officer: 2 } },
     { t: "Actually gets the work done", w: {}, k: { enlisted: 2 } },
     { t: "Becomes the expert on one part of it", w: { tech: 1 }, k: { enlisted: 1 } },
     { t: "Keeps everyone motivated and on track", w: {}, k: { officer: 1, enlisted: 1 } },
   ] },
-  { topic: "Role", q: "Would you rather...", options: [
+  { id: 38, topic: "Role", q: "Would you rather...", options: [
     { t: "Master a specific skill and be the go-to person for it", w: {}, k: { enlisted: 2 } },
     { t: "Lead a team and be responsible for its results", w: {}, k: { officer: 2 } },
   ] },
-  { topic: "Role", q: "Your team messes up and you're the one who has to answer for it. How does that feel?", options: [
+  { id: 39, fixed: true, topic: "Role", q: "Your team messes up and you're the one who has to answer for it. How does that feel?", options: [
     { t: "That's part of leading. I'm in", w: {}, k: { officer: 2 } },
     { t: "Fair, if I was in charge", w: {}, k: { officer: 1, enlisted: 1 } },
     { t: "I'd rather just be responsible for my own work", w: {}, k: { enlisted: 2 } },
   ] },
-  { topic: "Role", q: "Planning meetings, briefings and paperwork:", options: [
+  { id: 40, fixed: true, topic: "Role", q: "Planning meetings, briefings and paperwork:", options: [
     { t: "Fine with me. Someone has to run things", w: { comfort: 1 }, k: { officer: 2 } },
     { t: "Okay in small doses", w: {}, k: { officer: 1, enlisted: 1 } },
     { t: "I'd rather be out doing the actual job", w: { physical: 1 }, k: { enlisted: 2 } },
   ] },
   // Service type questions also score components (c): active duty, reserve, guard.
-  { topic: "Service type", q: "How big a part of your life do you want the military to be?", options: [
+  { id: 41, always: true, fixed: true, topic: "Service type", q: "How big a part of your life do you want the military to be?", options: [
     { t: "All of it. It's my full-time job", w: {}, c: { active: 2 } },
     { t: "A serious part-time commitment", w: {}, c: { reserve: 1, guard: 1 } },
     { t: "A smaller part, next to a civilian career or school", w: {}, c: { reserve: 2, guard: 1 } },
   ] },
-  { topic: "Service type", q: "What are your school or work plans for the next few years?", options: [
+  { id: 42, topic: "Service type", q: "What are your school or work plans for the next few years?", options: [
     { t: "Military first. School can come later, or during", w: {}, c: { active: 2 } },
     { t: "Go to college full time", w: {}, c: { guard: 2, reserve: 2 } },
     { t: "I've already finished college and want to use my degree", w: {}, c: { active: 1, reserve: 1 }, degree: true },
     { t: "Keep or start a civilian job", w: {}, c: { reserve: 2, guard: 1 } },
   ] },
-  { topic: "Service type", q: "Floods, wildfires or storms hit your state. Would you want to be called up to help?", options: [
+  { id: 43, fixed: true, topic: "Service type", q: "Floods, wildfires or storms hit your state. Would you want to be called up to help?", options: [
     { t: "Yes. Helping my own state matters a lot", w: { homeland: 1 }, c: { guard: 3 } },
     { t: "Sure, sometimes", w: {}, c: { guard: 1, reserve: 1 } },
     { t: "I'd rather focus on federal or overseas missions", w: { homeland: -1 }, c: { active: 1, reserve: 1 } },
   ] },
-  { topic: "Service type", q: "Moving to a new base every few years sounds...", options: [
+  { id: 44, fixed: true, topic: "Service type", q: "Moving to a new base every few years sounds...", options: [
     { t: "Exciting", w: { travel: 1 }, c: { active: 2 } },
     { t: "Like something I could handle", w: {}, c: { active: 1 } },
     { t: "Like a no. I'd rather keep living where I live", w: { travel: -1 }, c: { guard: 2, reserve: 2 } },
   ] },
-  { topic: "Service type", q: "Which benefit matters most to you?", options: [
+  { id: 45, topic: "Service type", q: "Which benefit matters most to you?", options: [
     { t: "A steady full-time paycheck, housing and healthcare now", w: {}, c: { active: 2 } },
     { t: "Help paying for college while I live a normal life", w: {}, c: { guard: 2, reserve: 1 } },
     { t: "Extra income and experience on the side", w: {}, c: { reserve: 2, guard: 1 } },
+  ] },
+  // ---- Added pool questions (ids 46+). Trait questions first.
+  { id: 46, topic: "Navigation", q: "Your phone dies on a road trip and there's no map. You...", options: [
+    { t: "Navigate by the sun and landmarks", w: { land: 1, physical: 1, tech: -1 } },
+    { t: "Head to the nearest town and ask", w: { comfort: 1 } },
+    { t: "Pull out the paper map I always keep in the car", w: { tradition: 1 } },
+    { t: "Rig something up to charge it", w: { tech: 2 } },
+  ] },
+  { id: 47, topic: "Food", q: "Pick a meal.", options: [
+    { t: "A field ration, eaten cold on a hillside", w: { land: 1, comfort: -2 } },
+    { t: "Whatever the ship's galley is serving tonight", w: { sea: 2 } },
+    { t: "A real dining hall with lots of options", w: { comfort: 2 } },
+    { t: "Doesn't matter, food is fuel", w: { physical: 1, comfort: -1 } },
+  ] },
+  { id: 48, topic: "Uniform", q: "How do you feel about wearing a uniform every day?", options: [
+    { t: "Love it, one less decision", w: { tradition: 1 } },
+    { t: "Love it if it looks razor sharp", w: { tradition: 2 } },
+    { t: "Give me a flight suit", w: { air: 2 } },
+    { t: "Give me coveralls I can get greasy", w: { tech: 1, comfort: -1 } },
+  ] },
+  { id: 49, topic: "Night watch", q: "It's 2 a.m. and you're on watch. Where are you?", options: [
+    { t: "On a ship's bridge, watching the horizon", w: { sea: 2 } },
+    { t: "In a fighting position with night vision", w: { land: 2, combat: 1, comfort: -2 } },
+    { t: "In a control room with coffee and screens", w: { space: 1, tech: 1, comfort: 1 } },
+    { t: "On a pier, checking boats coming in", w: { homeland: 2, sea: 1 } },
+  ] },
+  { id: 50, topic: "Heights", fixed: true, q: "How do you feel about jumping out of a plane?", options: [
+    { t: "Sign me up for airborne school", w: { physical: 1, combat: 1, land: 1 } },
+    { t: "I'd rather be the one flying the plane", w: { air: 2 } },
+    { t: "Only if I really had to", w: { physical: -1 } },
+    { t: "Absolutely not", w: { air: -1, physical: -1 } },
+  ] },
+  { id: 51, topic: "Sports", q: "Which sport fits you best?", options: [
+    { t: "Football: contact and teamwork", w: { physical: 2, combat: 1 } },
+    { t: "Swimming or water polo", w: { sea: 2, physical: 1 } },
+    { t: "Chess or esports", w: { tech: 1, space: 1, physical: -1 } },
+    { t: "Track or cross-country", w: { physical: 1, land: 1 } },
+    { t: "Wrestling or MMA", w: { combat: 2, physical: 1 } },
+  ] },
+  { id: 52, topic: "Boss", q: "Your ideal boss is...", options: [
+    { t: "Strict but fair, everything by the book", w: { tradition: 2 } },
+    { t: "Laid-back, as long as the work gets done", w: { tradition: -2, comfort: 1 } },
+    { t: "Someone who leads from the front and does it all with you", w: { physical: 1, combat: 1 } },
+    { t: "A brilliant expert you can learn from", w: { tech: 2 } },
+  ] },
+  { id: 53, topic: "Sleep", fixed: true, q: "You get four hours of sleep before a long, hard day. You...", options: [
+    { t: "Push through. Done it plenty of times", w: { physical: 2, comfort: -1 } },
+    { t: "Survive on coffee", w: {} },
+    { t: "Would be miserable", w: { comfort: 2, physical: -1 } },
+  ] },
+  { id: 54, topic: "Heat", q: "Working outside in 100°F desert heat:", options: [
+    { t: "Bring it on", w: { land: 2, physical: 1, comfort: -1 } },
+    { t: "I'd rather be out on the water", w: { sea: 1 } },
+    { t: "Air conditioning, please", w: { comfort: 2 } },
+    { t: "I'd rather be up in the air", w: { air: 1 } },
+  ] },
+  { id: 55, topic: "Dream trip", q: "Pick your dream trip.", options: [
+    { t: "Backpacking through foreign countries", w: { travel: 2 } },
+    { t: "A cruise that stops at different ports", w: { sea: 1, travel: 1 } },
+    { t: "A road trip across the U.S.", w: { homeland: 1, travel: -1 } },
+    { t: "A staycation at home", w: { travel: -2, comfort: 1 } },
+  ] },
+  { id: 56, topic: "Speed", q: "Pick the fastest thing you'd want to ride in.", options: [
+    { t: "A fighter jet", w: { air: 2 } },
+    { t: "A speedboat chasing smugglers", w: { sea: 1, homeland: 2 } },
+    { t: "A tank at full throttle", w: { land: 2, combat: 1 } },
+    { t: "A rocket", w: { space: 2 } },
+  ] },
+  { id: 57, topic: "Rules", q: "You see someone break a small rule. You...", options: [
+    { t: "Report it. Rules are rules", w: { tradition: 2, homeland: 1 } },
+    { t: "Tell them to knock it off", w: { tradition: 1 } },
+    { t: "Mind your own business", w: { tradition: -1 } },
+    { t: "It depends on whether it hurts anyone", w: { tradition: -1 } },
+  ] },
+  { id: 58, topic: "Hobbies", q: "Which hobby sounds best?", options: [
+    { t: "Hunting or camping", w: { land: 2, physical: 1 } },
+    { t: "Fishing or sailing", w: { sea: 2 } },
+    { t: "Building drones or RC planes", w: { air: 1, tech: 1 } },
+    { t: "Building PCs or coding", w: { tech: 2 } },
+    { t: "Stargazing with a telescope", w: { space: 2 } },
+  ] },
+  { id: 59, topic: "Emergency", q: "In an emergency, you're the one who...", options: [
+    { t: "Runs toward it", w: { combat: 1, physical: 1, homeland: 1 } },
+    { t: "Takes charge and gives orders", w: { tradition: 1 } },
+    { t: "Calls for help and coordinates", w: { tech: 1, comfort: 1 } },
+    { t: "Takes care of the people who got hurt", w: { homeland: 1 } },
+  ] },
+  { id: 60, topic: "Movies", q: "Pick a movie vibe.", options: [
+    { t: "Gritty war movie on the ground", w: { combat: 2, land: 1 } },
+    { t: "Fighter pilots and dogfights", w: { air: 2 } },
+    { t: "Rescue swimmers in a storm", w: { homeland: 2, sea: 1 } },
+    { t: "Astronauts stranded in space", w: { space: 2, tech: 1 } },
+    { t: "Warships on the high seas", w: { sea: 2 } },
+  ] },
+  { id: 61, topic: "Priorities", q: "What matters most in a job?", options: [
+    { t: "Adventure and stories to tell", w: { travel: 1, physical: 1 } },
+    { t: "Stability and benefits", w: { comfort: 1, travel: -1 } },
+    { t: "Skills I can use later", w: { tech: 1 } },
+    { t: "Pride and purpose", w: { tradition: 1, combat: 1 } },
+  ] },
+  { id: 62, topic: "Pond", q: "Big fish in a small pond, or small fish in a big pond?", options: [
+    { t: "Big fish, small pond", w: { scale: -2 } },
+    { t: "Small fish, big pond", w: { scale: 2 } },
+    { t: "Somewhere in the middle", w: {} },
+  ] },
+  { id: 63, topic: "Hometown", q: "Where would you most want to live?", options: [
+    { t: "Near the beach", w: { sea: 1, homeland: 1 } },
+    { t: "Overseas: Japan, Germany or Italy", w: { travel: 2 } },
+    { t: "Out west in the mountains or desert", w: { land: 1 } },
+    { t: "Near a big tech hub", w: { tech: 1, comfort: 1 } },
+    { t: "Wherever. I'll adapt", w: { travel: 1 } },
+  ] },
+  { id: 64, topic: "Dirt", fixed: true, q: "Getting muddy and dirty at work:", options: [
+    { t: "Part of the fun", w: { land: 1, comfort: -2, physical: 1 } },
+    { t: "Fine sometimes", w: { comfort: -1 } },
+    { t: "I'd rather stay clean", w: { comfort: 2 } },
+  ] },
+  { id: 65, topic: "Vehicles", q: "Pick something to drive.", options: [
+    { t: "A truck in a convoy", w: { land: 2 } },
+    { t: "A small rescue boat", w: { sea: 1, homeland: 2 } },
+    { t: "A tractor on an aircraft carrier's deck", w: { sea: 1, air: 1 } },
+    { t: "A satellite, from a keyboard", w: { space: 2, tech: 1 } },
+  ] },
+  { id: 66, topic: "Future", q: "Where do you see yourself in 20 years?", options: [
+    { t: "Retired from the military with a pension", w: { tradition: 1, scale: 1 } },
+    { t: "Running my own business", w: { tradition: -1 } },
+    { t: "A senior engineer or tech lead", w: { tech: 2 } },
+    { t: "A police chief or fire chief", w: { homeland: 2 } },
+  ] },
+  { id: 67, topic: "People", fixed: true, q: "Do you like being around lots of people?", options: [
+    { t: "Yes, the more the better", w: { scale: 2 } },
+    { t: "A small group of close friends is best", w: { scale: -1 } },
+    { t: "I mostly like being on my own", w: { scale: -2 } },
+  ] },
+  { id: 68, topic: "Risk", fixed: true, q: "How much danger is too much?", options: [
+    { t: "Any. I want a safe job", w: { combat: -2, comfort: 1 } },
+    { t: "Some risk is okay for the right reason", w: { homeland: 1 } },
+    { t: "High risk, high reward", w: { combat: 2, physical: 1 } },
+  ] },
+  { id: 69, topic: "Gear", q: "Pick the gear you'd carry.", options: [
+    { t: "Rifle, body armor and a 60-pound pack", w: { combat: 1, physical: 2, land: 1 } },
+    { t: "Life jacket and a rescue line", w: { sea: 1, homeland: 1 } },
+    { t: "Headset and flight helmet", w: { air: 2 } },
+    { t: "Laptop and a secure phone", w: { tech: 2 } },
+  ] },
+  { id: 70, topic: "Instructors", fixed: true, q: "Drill instructors yelling in your face all day sounds...", options: [
+    { t: "Motivating", w: { tradition: 2, physical: 1 } },
+    { t: "Survivable", w: { tradition: 1 } },
+    { t: "Awful", w: { tradition: -2 } },
+  ] },
+  { id: 71, topic: "Hurricane", q: "A hurricane is about to hit the coast. You want to be...", options: [
+    { t: "Flying rescue helicopters", w: { homeland: 2, air: 1 } },
+    { t: "Driving supply trucks into the disaster zone", w: { homeland: 1, land: 1 } },
+    { t: "Tracking it with satellites", w: { space: 1, tech: 1 } },
+    { t: "Far away on a deployment overseas", w: { travel: 2, homeland: -1 } },
+  ] },
+  { id: 72, topic: "Night ocean", fixed: true, q: "The open ocean at night, with no land in sight:", options: [
+    { t: "Peaceful", w: { sea: 2 } },
+    { t: "Cool for a little while", w: {} },
+    { t: "Creepy", w: { sea: -2 } },
+  ] },
+  { id: 73, topic: "School", q: "Pick a class.", options: [
+    { t: "Engineering or physics", w: { tech: 2, space: 1 } },
+    { t: "Criminal justice", w: { homeland: 2 } },
+    { t: "Weight training", w: { physical: 2 } },
+    { t: "History", w: { tradition: 1 } },
+    { t: "Auto shop", w: { tech: 1, comfort: -1 } },
+  ] },
+  { id: 74, topic: "Time", fixed: true, q: "How long would you want to serve?", options: [
+    { t: "One enlistment, then on to the next thing", w: { tradition: -1 } },
+    { t: "Not sure yet", w: {} },
+    { t: "A full career", w: { tradition: 1, scale: 1 } },
+  ] },
+  { id: 75, topic: "Holidays", fixed: true, q: "Working some weekends and holidays:", options: [
+    { t: "Fine if the mission needs it", w: { tradition: 1, homeland: 1 } },
+    { t: "Okay when I'm deployed", w: { travel: 1 } },
+    { t: "I'd rather not", w: { comfort: 2 } },
+  ] },
+  { id: 76, topic: "Superpower", q: "Pick a superpower.", options: [
+    { t: "Super strength", w: { physical: 2 } },
+    { t: "Flight", w: { air: 2 } },
+    { t: "Breathing underwater", w: { sea: 2 } },
+    { t: "Super intelligence", w: { tech: 2 } },
+    { t: "Teleporting anywhere in the world", w: { travel: 2 } },
+  ] },
+  { id: 77, topic: "Group chat", q: "In your friends' group chat, you're...", options: [
+    { t: "The one who plans everything", w: { tradition: 1 } },
+    { t: "The one sending memes", w: { comfort: 1 } },
+    { t: "The one who fixes everyone's tech", w: { tech: 2 } },
+    { t: "The one who's always outside doing something", w: { physical: 1, land: 1 } },
+  ] },
+  { id: 78, topic: "Sunrise", q: "Pick a view at sunrise.", options: [
+    { t: "The desert, from a guard tower", w: { land: 2, combat: 1 } },
+    { t: "The ocean, from a ship's deck", w: { sea: 2, travel: 1 } },
+    { t: "Clouds, from a cockpit", w: { air: 2 } },
+    { t: "Earth, from a satellite feed", w: { space: 2 } },
+    { t: "Your hometown harbor", w: { homeland: 2, sea: 1 } },
+  ] },
+  { id: 79, topic: "Challenge", q: "Pick a 24-hour challenge.", options: [
+    { t: "A long hike with no sleep", w: { physical: 2, comfort: -2 } },
+    { t: "A hackathon", w: { tech: 2 } },
+    { t: "Swimming a mile in open water", w: { sea: 2, physical: 1 } },
+    { t: "Learning to fly a small plane", w: { air: 2 } },
+  ] },
+  { id: 80, topic: "Breakdown", q: "Your car breaks down on a back road. You...", options: [
+    { t: "Fix it yourself", w: { tech: 1, comfort: -1 } },
+    { t: "Call roadside assistance", w: { comfort: 1 } },
+    { t: "Walk to the nearest town", w: { physical: 1, land: 1 } },
+  ] },
+  { id: 81, topic: "Offline", fixed: true, q: "No Wi-Fi or signal for weeks at a time:", options: [
+    { t: "No problem", w: { land: 1, comfort: -2, travel: 1 } },
+    { t: "Annoying, but fine", w: { comfort: -1 } },
+    { t: "Absolutely not", w: { comfort: 2, tech: 1 } },
+  ] },
+  { id: 82, topic: "Values", q: "Which matters more to you?", options: [
+    { t: "Being the best", w: { tradition: 2, combat: 1 } },
+    { t: "Helping people", w: { homeland: 2 } },
+    { t: "Working with cool tech", w: { tech: 2 } },
+    { t: "Seeing the world", w: { travel: 2 } },
+  ] },
+  { id: 83, topic: "Mascot", q: "Pick a team mascot.", options: [
+    { t: "A bulldog", w: { tradition: 1, combat: 1, physical: 1 } },
+    { t: "An eagle", w: { air: 1 } },
+    { t: "A shark", w: { sea: 2 } },
+    { t: "A wolf", w: { land: 1, scale: -1 } },
+  ] },
+  { id: 84, topic: "Grooming", fixed: true, q: "Strict rules about haircuts and grooming:", options: [
+    { t: "Fine. High and tight forever", w: { tradition: 2 } },
+    { t: "I'll follow them", w: { tradition: 1 } },
+    { t: "I'd want more freedom", w: { tradition: -2, comfort: 1 } },
+  ] },
+  { id: 85, topic: "Boredom", q: "How do you deal with boredom?", options: [
+    { t: "I can't sit still, so I go do something", w: { physical: 2 } },
+    { t: "Read or learn something", w: { tech: 1 } },
+    { t: "Video games", w: { comfort: 1, tech: 1 } },
+    { t: "Find something to fix", w: { tech: 1, comfort: -1 } },
+  ] },
+  { id: 86, topic: "Duty station", q: "Pick a place to be stationed.", options: [
+    { t: "Hawaii", w: { sea: 1, travel: 1 } },
+    { t: "Alaska", w: { physical: 1, comfort: -1 } },
+    { t: "Germany", w: { travel: 2 } },
+    { t: "Colorado", w: { space: 1, land: 1 } },
+    { t: "My home state", w: { homeland: 2, travel: -2 } },
+  ] },
+  { id: 87, topic: "Job title", q: "Pick a job title.", options: [
+    { t: "Operator", w: { combat: 2, physical: 1 } },
+    { t: "Technician", w: { tech: 2 } },
+    { t: "Rescuer", w: { homeland: 2 } },
+    { t: "Navigator", w: { sea: 1, air: 1 } },
+  ] },
+  { id: 88, topic: "Friends", q: "How would your friends describe you?", options: [
+    { t: "Tough", w: { physical: 2 } },
+    { t: "Smart", w: { tech: 2 } },
+    { t: "Loyal", w: { tradition: 1 } },
+    { t: "Adventurous", w: { travel: 2 } },
+    { t: "Helpful", w: { homeland: 2 } },
+  ] },
+  { id: 100, topic: "One word", q: "Pick one word.", options: [
+    { t: "Discipline", w: { tradition: 2 } },
+    { t: "Freedom", w: { tradition: -1, travel: 1 } },
+    { t: "Service", w: { homeland: 2 } },
+    { t: "Innovation", w: { tech: 2, space: 1 } },
+    { t: "Strength", w: { physical: 2 } },
+  ] },
+  { id: 101, topic: "Formality", fixed: true, q: "Salutes, ranks and formal ceremonies:", options: [
+    { t: "Love the tradition", w: { tradition: 2 } },
+    { t: "Fine with it", w: { tradition: 1 } },
+    { t: "Not my thing", w: { tradition: -2 } },
+  ] },
+  // Added job interest questions.
+  { id: 89, topic: "Job interests", q: "Which show would you binge?", options: [
+    { t: "A hospital drama", w: {}, i: { medical: 2 } },
+    { t: "A police bodycam series", w: {}, i: { law: 2 } },
+    { t: "How things are built and engineered", w: {}, i: { mechanic: 1, build: 1 } },
+    { t: "A hacker thriller", w: { tech: 1 }, i: { cyber: 2 } },
+    { t: "A special forces selection show", w: { physical: 1 }, i: { elite: 2 } },
+  ] },
+  { id: 90, topic: "Job interests", q: "Pick a weekend project.", options: [
+    { t: "Rebuild an engine", w: {}, i: { mechanic: 2 } },
+    { t: "Build a deck or a shed", w: {}, i: { build: 2 } },
+    { t: "Set up a home network or server", w: { tech: 1 }, i: { cyber: 2 } },
+    { t: "Plan a big trip down to the minute", w: {}, i: { logistics: 2 } },
+    { t: "Take a first aid and CPR class", w: {}, i: { medical: 2 } },
+  ] },
+  { id: 91, topic: "Job interests", q: "Pick your role in a team video game.", options: [
+    { t: "Sniper", w: {}, i: { infantry: 1, weapons: 1 } },
+    { t: "Medic", w: {}, i: { medical: 2 } },
+    { t: "Engineer who builds defenses", w: {}, i: { build: 2 } },
+    { t: "Pilot", w: { air: 1 }, i: { aviation: 2 } },
+    { t: "Recon and radio", w: {}, i: { comms: 1, intel: 1 } },
+  ] },
+  { id: 92, topic: "Job interests", q: "What would you want to be really good at?", options: [
+    { t: "Tactics and marksmanship", w: { combat: 1 }, i: { infantry: 1, weapons: 1 } },
+    { t: "Saving lives", w: {}, i: { medical: 2 } },
+    { t: "Flying", w: { air: 1 }, i: { aviation: 2 } },
+    { t: "Investigating", w: {}, i: { intel: 1, law: 1 } },
+    { t: "Keeping big operations running smoothly", w: {}, i: { logistics: 2 } },
+  ] },
+  { id: 93, topic: "Job interests", q: "Pick a gadget.", options: [
+    { t: "Night vision goggles", w: {}, i: { infantry: 1, elite: 1 } },
+    { t: "A drone", w: {}, i: { aviation: 1, intel: 1 } },
+    { t: "An encrypted radio", w: {}, i: { comms: 2 } },
+    { t: "A welding torch", w: {}, i: { build: 1, mechanic: 1 } },
+    { t: "A police scanner", w: {}, i: { law: 2 } },
+  ] },
+  { id: 94, topic: "Job interests", q: "On a rainy day, which job would you hate the least?", options: [
+    { t: "Directing traffic", w: {}, i: { law: 1 } },
+    { t: "Fixing a broken generator", w: {}, i: { mechanic: 2 } },
+    { t: "Running supply deliveries", w: {}, i: { logistics: 2 } },
+    { t: "Watching radar indoors", w: {}, i: { comms: 2 } },
+    { t: "Patching up injured people", w: {}, i: { medical: 2 } },
+  ] },
+  // Added role questions.
+  { id: 95, topic: "Role", q: "When things go wrong, you'd rather...", options: [
+    { t: "Make the call and own it", w: {}, k: { officer: 2 } },
+    { t: "Fix the problem with my own hands", w: {}, k: { enlisted: 2 } },
+    { t: "Advise whoever's in charge", w: {}, k: { officer: 1, enlisted: 1 } },
+  ] },
+  { id: 96, topic: "Role", fixed: true, q: "Public speaking and giving briefings:", options: [
+    { t: "I like it", w: {}, k: { officer: 2 } },
+    { t: "It's fine", w: {}, k: { officer: 1, enlisted: 1 } },
+    { t: "I'd rather not", w: {}, k: { enlisted: 2 } },
+  ] },
+  { id: 97, topic: "Role", q: "Start working right away, or spend four more years in school first?", options: [
+    { t: "Start right away", w: {}, k: { enlisted: 2 } },
+    { t: "School first", w: {}, k: { officer: 2 } },
+    { t: "Do school while I serve", w: {}, k: { enlisted: 1, officer: 1 } },
+  ] },
+  // Added service type questions.
+  { id: 98, topic: "Service type", fixed: true, q: "Being away from your hometown friends most of the year:", options: [
+    { t: "Fine. I'll make new friends", w: {}, c: { active: 2 } },
+    { t: "Somewhere in between", w: {}, c: { reserve: 1, guard: 1 } },
+    { t: "I'd rather keep my life at home", w: {}, c: { reserve: 2, guard: 2 } },
+  ] },
+  { id: 99, topic: "Service type", fixed: true, q: "Would you want a civilian career and a military one at the same time?", options: [
+    { t: "Yes, both", w: {}, c: { reserve: 2, guard: 2 } },
+    { t: "Maybe later", w: {}, c: { active: 1, reserve: 1 } },
+    { t: "No, military only", w: {}, c: { active: 2 } },
   ] },
 ];
 
@@ -720,3 +1064,9 @@ const COMPONENT_DETAILS = {
 
 // Faded background photos behind the results, by branch.
 const BG_IMAGES = { army: "images/army.jpg", usmc: "images/usmc.jpg", navy: "images/navy.jpg", af: "images/af.jpg", sf: "images/sf.jpg", cg: "images/cg.jpg" };
+
+// Where the action is in each photo (fractions of width and height), so
+// crops center on it: the lead soldier and convoy, the Marines advancing
+// toward the blast, the sailors hauling the line, the jet on afterburner,
+// the two Guardians, the response boat.
+const BG_FOCUS = { army: [0.63, 0.5], usmc: [0.5, 0.45], navy: [0.4, 0.5], af: [0.7, 0.4], sf: [0.55, 0.4], cg: [0.57, 0.58] };

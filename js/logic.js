@@ -1,6 +1,11 @@
 "use strict";
 
-// Scoring: traits, branches, tracks, components and jobs.
+// Scoring: traits, branches, tracks, components and jobs. Every scoring
+// function takes the answers plus the question set they belong to, which
+// defaults to the current quiz. Shared results bring their own set.
+
+// The questions in the current quiz, drawn from POOL by pickQuestions().
+let QUESTIONS = POOL.filter((q) => q.id <= 45);
 
 function civilianCareers(job) {
   if (CIVILIAN_OVERRIDES[job.n]) return CIVILIAN_OVERRIDES[job.n];
@@ -9,11 +14,11 @@ function civilianCareers(job) {
   return [...new Set(tags.flatMap((k, n) => CIVILIAN[k].slice(0, n === 0 ? 3 : 1)))].slice(0, 4);
 }
 
-function interestVector(answers) {
+function interestVector(answers, qs = QUESTIONS) {
   const v = {};
   answers.forEach((idx, i) => {
     if (idx == null) return;
-    for (const [k, x] of Object.entries(QUESTIONS[i].options[idx].i || {})) v[k] = (v[k] || 0) + x;
+    for (const [k, x] of Object.entries(qs[i].options[idx].i || {})) v[k] = (v[k] || 0) + x;
   });
   return v;
 }
@@ -23,8 +28,8 @@ function interestVector(answers) {
 // the one after, and so on (main tags count double). So a job is driven by
 // the user's strongest matching interest, extra matching tags add a bonus,
 // and on a tie the more focused job wins.
-function topJobs(answers, branch, track, count = 3) {
-  const user = interestVector(answers);
+function topJobs(answers, branch, track, count = 3, qs = QUESTIONS) {
+  const user = interestVector(answers, qs);
   return JOBS[branch]
     .filter((j) => j.tr === track)
     .map((j, order) => {
@@ -37,10 +42,10 @@ function topJobs(answers, branch, track, count = 3) {
     .slice(0, count);
 }
 
-function interestNote(answers, branch) {
+function interestNote(answers, branch, qs = QUESTIONS) {
   const notes = INTEREST_NOTES[branch];
   if (!notes) return null;
-  const user = interestVector(answers);
+  const user = interestVector(answers, qs);
   const top = Object.keys(user).sort((a, b) => user[b] - user[a]).slice(0, 2);
   const hit = top.find((k) => notes[k]);
   return hit ? notes[hit] : null;
@@ -52,40 +57,58 @@ function joinWords(words) {
 
 const TRAIT_IDS = Object.keys(TRAITS);
 
-// The user's profile is the average nudge per trait. Traits answered more
-// often count more, up to a cap, so one stray answer can't dominate.
-function profile(answers) {
+// The user's profile is the average nudge per trait. Each answer counts
+// relative to the other options in its question: what you picked minus the
+// average of what you could have picked. That way a question whose options
+// all lean one way (say, mostly toward tech) can't tilt everyone toward the
+// same branch, and random clicking averages out to no lean at all. Traits
+// answered more often count more, up to a cap, so one stray answer can't
+// dominate.
+function profile(answers, qs = QUESTIONS) {
   const sum = {}, n = {};
   answers.forEach((idx, i) => {
     if (idx == null) return;
-    for (const [t, v] of Object.entries(QUESTIONS[i].options[idx].w)) {
-      sum[t] = (sum[t] || 0) + v;
+    const opts = qs[i].options;
+    for (const t of new Set(opts.flatMap((o) => Object.keys(o.w)))) {
+      const mean = opts.reduce((a, o) => a + (o.w[t] || 0), 0) / opts.length;
+      sum[t] = (sum[t] || 0) + (opts[idx].w[t] || 0) - mean;
       n[t] = (n[t] || 0) + 1;
     }
   });
   const out = {};
   for (const t of TRAIT_IDS) {
-    if (n[t]) out[t] = { value: sum[t] / n[t], weight: Math.min(n[t], 4) };
+    // Relative answers average out smaller than the -2..+2 option scale, so
+    // they're doubled (and capped) to read on the same scale as branches.
+    if (n[t]) out[t] = { value: Math.max(-2, Math.min(2, (2 * sum[t]) / n[t])), weight: Math.min(n[t], 4) };
   }
   return out;
 }
 
-// Cosine similarity between the user's leanings and the branch profile, over
-// the traits the user actually answered. Comparing direction rather than
-// distance keeps middle-of-the-road profiles from winning by default.
+// How much the match leans on direction (cosine) versus closeness (distance).
+let MATCH_BLEND = 0.75;
+
+// Mostly cosine similarity between the user's leanings and the branch profile,
+// over the traits the user actually answered. Comparing direction keeps
+// middle-of-the-road profiles from winning by default. A share of plain
+// closeness is blended in so branches that lean the same way but by different
+// amounts (like the Army and the Marines) can still be told apart.
 function match(user, branch) {
-  let dot = 0, uu = 0, pp = 0;
+  let dot = 0, uu = 0, pp = 0, gap = 0, weight = 0;
   for (const [t, u] of Object.entries(user)) {
     const p = BRANCHES[branch].traits[t];
     dot += u.weight * u.value * p;
     uu += u.weight * u.value * u.value;
     pp += u.weight * p * p;
+    gap += u.weight * Math.abs(u.value - p);
+    weight += u.weight;
   }
-  return uu && pp ? dot / Math.sqrt(uu * pp) : 0;
+  const cos = uu && pp ? dot / Math.sqrt(uu * pp) : 0;
+  const close = weight ? 1 - gap / weight / 2 : 0;
+  return MATCH_BLEND * cos + (1 - MATCH_BLEND) * close;
 }
 
-function score(answers) {
-  const user = profile(answers);
+function score(answers, qs = QUESTIONS) {
+  const user = profile(answers, qs);
   return ORDER
     .map((b) => ({ id: b, raw: match(user, b) }))
     .map((r) => ({ ...r, pct: Math.round(((r.raw + 1) / 2) * 100) }))
@@ -94,10 +117,10 @@ function score(answers) {
 
 // Scores a set of options (components or tracks) stored under `field` on each
 // answer, as a share of the most each option could have earned.
-function categoryScore(answers, field, ids) {
+function categoryScore(answers, field, ids, qs = QUESTIONS) {
   const raw = Object.fromEntries(ids.map((k) => [k, 0]));
   const max = Object.fromEntries(ids.map((k) => [k, 0]));
-  QUESTIONS.forEach((q, i) => {
+  qs.forEach((q, i) => {
     for (const k of ids) max[k] += Math.max(0, ...q.options.map((o) => (o[field] && o[field][k]) || 0));
     const picked = answers[i] == null ? {} : q.options[answers[i]][field] || {};
     for (const k of ids) raw[k] += picked[k] || 0;
@@ -107,12 +130,12 @@ function categoryScore(answers, field, ids) {
     .sort((a, b) => b.pct - a.pct || ids.indexOf(a.id) - ids.indexOf(b.id));
 }
 
-function componentScore(answers) {
-  return categoryScore(answers, "c", COMPONENT_ORDER);
+function componentScore(answers, qs = QUESTIONS) {
+  return categoryScore(answers, "c", COMPONENT_ORDER, qs);
 }
 
-function trackScore(answers) {
-  return categoryScore(answers, "k", TRACK_ORDER);
+function trackScore(answers, qs = QUESTIONS) {
+  return categoryScore(answers, "k", TRACK_ORDER, qs);
 }
 
 // Turns a branch and component into a real service option. Only the Army and
@@ -162,3 +185,117 @@ function clashes(user, branch) {
     .sort((a, b) => b.gap * b.u.weight - a.gap * a.u.weight)
     .map(({ t, u }) => `The ${BRANCHES[branch].name} leans toward ${phrase(t, BRANCHES[branch].traits[t])}, but you leaned toward ${phrase(t, u.value)}.`);
 }
+
+// ---------------------------------------------------------------------------
+// Question sets.
+
+// Small seeded random generator (mulberry32), so ?seed=N reproduces a quiz.
+function makeRng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffled(list, rng) {
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function groupOf(q) {
+  if (q.options.some((o) => o.i)) return "interest";
+  if (q.options.some((o) => o.k)) return "role";
+  if (q.options.some((o) => o.c)) return "service";
+  return "trait";
+}
+
+function traitsOf(q) {
+  return [...new Set(q.options.flatMap((o) => Object.keys(o.w)))];
+}
+
+const MODES = {
+  full: { trait: 29, interest: 6, role: 5, service: 5 },
+  quick: { trait: 8, interest: 3, role: 2, service: 2 },
+};
+
+// Draws a quiz from the pool. Trait questions are picked greedily so every
+// trait gets covered evenly, with some randomness so retakes feel fresh.
+// The rest come in groups: trait questions, then job interests, role and
+// service type.
+function interestsOf(q) {
+  return [...new Set(q.options.flatMap((o) => Object.keys(o.i || {})))];
+}
+
+// Picks `count` questions from `pool`, starting with the `always` ones, then
+// greedily preferring questions that cover what's been covered least (by
+// the keys `keysOf` returns), with some randomness so retakes differ.
+function pickCovering(pool, count, keysOf, rng) {
+  const coverage = {};
+  const picked = pool.filter((q) => q.always);
+  const remaining = pool.filter((q) => !q.always);
+  picked.forEach((q) => keysOf(q).forEach((k) => { coverage[k] = (coverage[k] || 0) + 1; }));
+  while (picked.length < count && remaining.length) {
+    let best = 0, bestScore = -Infinity;
+    remaining.forEach((q, i) => {
+      const value = keysOf(q).reduce((a, k) => a + 1 / (1 + (coverage[k] || 0)), 0) + rng() * 0.6;
+      if (value > bestScore) { bestScore = value; best = i; }
+    });
+    const [q] = remaining.splice(best, 1);
+    keysOf(q).forEach((k) => { coverage[k] = (coverage[k] || 0) + 1; });
+    picked.push(q);
+  }
+  return shuffled(picked, rng);
+}
+
+function pickQuestions(mode, rng) {
+  const counts = MODES[mode] || MODES.full;
+  const byGroup = { trait: [], interest: [], role: [], service: [] };
+  for (const q of POOL) byGroup[groupOf(q)].push(q);
+  return [
+    ...pickCovering(byGroup.trait, counts.trait, traitsOf, rng),
+    ...pickCovering(byGroup.interest, counts.interest, interestsOf, rng),
+    ...pickCovering(byGroup.role, counts.role, () => ["role"], rng),
+    ...pickCovering(byGroup.service, counts.service, () => ["service"], rng),
+  ];
+}
+
+// Display order of each question's options. Scales keep their order.
+function pickOrders(qs, rng) {
+  return qs.map((q) => {
+    const order = q.options.map((_, i) => i);
+    return q.fixed ? order : shuffled(order, rng);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Share codes: three characters per question, the id in base 36 (two chars)
+// plus the chosen option in base 36, or "-" for a skipped question.
+
+function encodeAnswers(qs, answers) {
+  return qs.map((q, i) => q.id.toString(36).padStart(2, "0") + (answers[i] == null ? "-" : answers[i].toString(36))).join("");
+}
+
+// Returns { qs, answers } or null if the code is malformed or unknown.
+function decodeAnswers(code) {
+  if (!code || code.length % 3 !== 0 || code.length > 3 * 60) return null;
+  const qs = [], answers = [];
+  for (let i = 0; i < code.length; i += 3) {
+    const q = POOL.find((x) => x.id === parseInt(code.slice(i, i + 2), 36));
+    const a = code[i + 2];
+    if (!q || qs.includes(q)) return null;
+    const idx = a === "-" ? null : parseInt(a, 36);
+    if (idx != null && !(idx >= 0 && idx < q.options.length)) return null;
+    qs.push(q);
+    answers.push(idx);
+  }
+  return qs.length ? { qs, answers } : null;
+}
+

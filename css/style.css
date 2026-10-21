@@ -231,3 +231,45 @@ footer { max-width: 680px; margin-top: 22px; font-size: 13px; color: var(--muted
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* "Why not" rows: each branch bar opens to explain its ranking. */
+details.why-row summary { list-style: none; cursor: pointer; }
+details.why-row summary::-webkit-details-marker { display: none; }
+details.why-row .bar-row { grid-template-columns: 112px 1fr 44px 16px; }
+details.why-row summary .bar-row::after { content: "+"; font: 700 16px var(--mono); color: var(--muted); }
+details.why-row[open] summary .bar-row::after { content: "–"; }
+.why-body { margin: 10px 0 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); display: grid; gap: 8px; font-size: 14px; }
+@media (max-width: 480px) { details.why-row .bar-row { grid-template-columns: 92px 1fr 40px 14px; } }
+
+/* Trait radar. */
+.radar-wrap { display: flex; justify-content: center; }
+.radar { width: 100%; max-width: 380px; height: auto; overflow: visible; }
+.radar-ring { fill: none; stroke: var(--line); stroke-width: 1; }
+.radar-ring.mid { stroke-dasharray: 4 4; stroke: #3a4a3e; }
+.radar-axis { stroke: var(--line); stroke-width: 1; }
+.radar-label { fill: var(--muted); font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.radar-shape { stroke: var(--c); stroke-width: 2.5; fill: var(--c); fill-opacity: 0.12; stroke-linejoin: round; }
+.radar-shape.you { fill-opacity: 0.25; }
+.chip-btn { cursor: pointer; padding: 6px 12px; font-size: 13px; }
+.chip-btn.active { border-color: var(--accent); background: rgba(159, 211, 107, 0.12); }
+
+/* Share and compare. */
+.share-box { margin-top: 28px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.text-input {
+  width: 100%; font: inherit; color: var(--text); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px;
+}
+.text-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.row { display: flex; gap: 8px; }
+.row .text-input { flex: 1; min-width: 0; }
+.compare .job { margin-bottom: 10px; }
+td.win { color: var(--accent); font-weight: 700; }
+
+/* Share card preview. */
+.card-preview-wrap { display: flex; justify-content: center; margin-top: 14px; }
+.card-preview { display: block; width: 100%; height: auto; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); }
+.card-preview.long { max-width: 300px; border-radius: 14px; }
+.card-preview.square { max-width: 420px; border-radius: 6.67%; }
+.seg button.seg-item { cursor: pointer; font: inherit; font-size: 14px; }
+.seg button.seg-item.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.card-preview.wide { max-width: 100%; border-radius: 8px; }
