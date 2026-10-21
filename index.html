@@ -500,6 +500,11 @@ const QUESTIONS = [
     { t: "Electrician or builder", w: {}, i: { build: 2 } },
     { t: "Air traffic controller", w: {}, i: { comms: 1, aviation: 1 } },
     { t: "Detective or analyst", w: {}, i: { intel: 2 } },
+    { t: "Firefighter", w: { homeland: 2, physical: 1 }, i: { medical: 1, elite: 1 } },
+    { t: "Wildland firefighter or smokejumper", w: { physical: 2, comfort: -2, land: 1 }, i: { elite: 2 } },
+    { t: "Power lineman, climbing towers in storms", w: { physical: 1, tech: 1 }, i: { build: 1, mechanic: 1 } },
+    { t: "Offshore oil rig worker", w: { sea: 2, physical: 1, comfort: -1 }, i: { mechanic: 2 } },
+    { t: "SWAT officer", w: { combat: 1, homeland: 1, physical: 1 }, i: { law: 2, weapons: 1 } },
   ] },
   { topic: "Job interests", q: "Which would feel the most rewarding?", options: [
     { t: "Keeping a hurt person alive", w: {}, i: { medical: 2 } },
@@ -754,6 +759,55 @@ const JOBS = {
   ],
 };
 
+// Civilian careers that military experience in each area commonly leads to.
+// Some need extra licenses, certifications or school after service.
+const CIVILIAN = {
+  infantry: ["police officer", "federal law enforcement", "firefighter", "security contractor"],
+  weapons: ["firearms instructor", "gunsmith", "range safety officer"],
+  medical: ["EMT or paramedic", "ER technician", "nurse (with more school)", "physician assistant (with more school)"],
+  build: ["construction", "electrician", "carpenter", "construction project manager"],
+  mechanic: ["diesel or auto mechanic", "industrial maintenance tech", "power plant operator"],
+  cyber: ["cybersecurity analyst", "network administrator", "penetration tester"],
+  intel: ["intelligence analyst (government or contractor)", "data analyst", "federal agent"],
+  law: ["police officer", "federal agent", "corrections officer", "private security"],
+  aviation: ["airline or charter pilot", "aircraft mechanic", "flight operations"],
+  elite: ["federal tactical teams", "security consulting", "wilderness EMT", "firefighter"],
+  logistics: ["truck driver (CDL)", "supply chain manager", "warehouse operations manager"],
+  comms: ["telecom technician", "radio and satellite technician", "emergency dispatcher"],
+};
+
+// Jobs whose civilian path is more specific than their interest tags.
+const CIVILIAN_OVERRIDES = {
+  "Nuclear Field Technician": ["nuclear power plant operator", "electrician", "power plant technician"],
+  "Submarine Officer": ["nuclear power plant manager", "engineering manager"],
+  "Air Traffic Controller": ["FAA air traffic controller", "airport operations"],
+  "Helicopter Repairer": ["helicopter or aircraft mechanic (A&P license)", "aviation maintenance"],
+  "Aircraft Maintenance Marine": ["aircraft mechanic (A&P license)", "aviation maintenance"],
+  "Aviation Machinist's Mate": ["aircraft engine mechanic (A&P license)", "turbine technician"],
+  "Aircraft Maintenance (Crew Chief)": ["aircraft mechanic (A&P license)", "aviation maintenance"],
+  "Aviation Maintenance Technician": ["aircraft mechanic (A&P license)", "aviation maintenance"],
+  "Motor Transport Operator": ["truck driver (CDL)", "logistics coordinator", "fleet manager"],
+  "Motor Vehicle Operator": ["truck driver (CDL)", "logistics coordinator", "fleet manager"],
+  "Seabee: Equipment Operator": ["heavy equipment operator", "crane operator", "construction"],
+  "Seabee: Construction Electrician": ["electrician", "power lineman", "construction"],
+  "Navy Diver": ["commercial diver", "underwater welder", "salvage diver"],
+  "Damage Controlman": ["firefighter", "welder", "industrial safety"],
+  "Aviation Survival Technician": ["rescue swimmer or lifeguard", "paramedic", "firefighter"],
+  "Pararescue (PJ)": ["paramedic", "wilderness medicine", "federal rescue teams"],
+  "Army Aviator": ["helicopter pilot (medevac, news, tours)", "airline pilot"],
+  "Pilot": ["airline pilot", "corporate or charter pilot"],
+  "Naval Aviator": ["airline pilot", "corporate or charter pilot"],
+  "Marine Pilot": ["airline pilot", "corporate or charter pilot"],
+  "Coast Guard Aviator": ["helicopter pilot (medevac, offshore)", "airline pilot"],
+};
+
+function civilianCareers(job) {
+  if (CIVILIAN_OVERRIDES[job.n]) return CIVILIAN_OVERRIDES[job.n];
+  // Main tags first, then secondary tags, without repeats.
+  const tags = Object.entries(job.i).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  return [...new Set(tags.flatMap((k, n) => CIVILIAN[k].slice(0, n === 0 ? 3 : 1)))].slice(0, 4);
+}
+
 // Notes shown when a top interest has no matching job in a branch.
 const INTEREST_NOTES = {
   usmc: { medical: "The Marines don't have their own medics. Navy Hospital Corpsmen serve with Marine units, so the Navy is the way to be a Marine unit's medic." },
@@ -975,7 +1029,7 @@ function renderQuestion() {
     class: "option" + (chosen === idx ? " selected" : ""),
     "aria-pressed": String(chosen === idx),
     onclick: () => choose(idx),
-  }, el("span", { class: "key" }, String(idx + 1)),
+  }, el("span", { class: "key" }, String((idx + 1) % 10)),
     el("span", {}, o.t, DEBUG ? el("span", { class: "debug" }, describeEffects(o)) : null)));
 
   app.append(el("div", { class: "card fade-in" },
@@ -1094,6 +1148,7 @@ function renderResults() {
         el("p", { class: "muted", style: "margin:4px 0 0" }, j.d),
         j.shared.length ? el("p", { style: "margin:6px 0 0; font-size:14px" },
           `Fits your interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null,
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "After you get out: "), civilianCareers(j).join(", ")),
         el("a", { href: branchLink(r.id, tracks[0].id, components[0].id), style: "display:inline-block; margin-top:8px; font-size:14px" }, "See this path →")));
   });
 
@@ -1139,7 +1194,7 @@ function renderResults() {
     el("div", { class: "jobs" }, jobCards),
     jobNotes.map((n) => el("div", { class: "note", style: "margin-top:12px" }, n)),
     el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
-      "Job names are simplified. Every branch has many more jobs, and which ones you can get depends on test scores, physical standards and openings."),
+      "Job names are simplified. Every branch has many more jobs, and which ones you can get depends on test scores, physical standards and openings. Civilian careers are common paths, and some need extra licenses or school."),
 
     strongest.length ? [
       el("div", { class: "section-title" }, "Your profile"),
@@ -1235,9 +1290,9 @@ document.addEventListener("keydown", (e) => {
   if (e.altKey || e.ctrlKey || e.metaKey) return;
   if (route.page !== "quiz") return;
   if (state.step < 0 || state.step >= QUESTIONS.length) return;
-  const n = Number(e.key);
+  const n = e.key === "0" ? 10 : Number(e.key);
   if (n >= 1 && n <= QUESTIONS[state.step].options.length) choose(n - 1);
-  else if (e.key === "s" || e.key === "0") skip();
+  else if (e.key === "s") skip();
   else if (e.key === "ArrowLeft") { if (state.step > 0) back(); }
   else if (e.key === "ArrowRight" || e.key === "Enter") next();
 });
@@ -1519,6 +1574,7 @@ function renderBranch() {
         el("summary", {}, el("strong", { class: "job-name" }, j.n)),
         el("p", { class: "muted", style: "margin:6px 0 0" }, j.d),
         el("p", { style: "margin:6px 0 0; font-size:14px" }, `Good for people into ${joinWords(Object.keys(j.i).map((k) => INTERESTS[k]))}.`),
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "Civilian careers it can lead to: "), civilianCareers(j).join(", ")),
         el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "Training: "),
           track === "enlisted"
             ? `${d.bootcamp.name}, then ${d.tech.name} for this job.`
@@ -1592,7 +1648,7 @@ function renderTraining() {
     el("div", { class: "jobs" }, ORDER.map((b) => trainingCard(b))),
   ));
 }
-window.branchQuiz = { DETAILS, route, QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, trackScore, serviceOption, topJobs, interestVector, JOBS, state, render };
+window.branchQuiz = { DETAILS, route, QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, trackScore, serviceOption, topJobs, interestVector, JOBS, civilianCareers, CIVILIAN_OVERRIDES, state, render };
 
 render();
 </script>
