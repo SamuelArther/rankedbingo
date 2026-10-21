@@ -12,6 +12,34 @@
   --radius: 14px;
   --mono: ui-monospace, "Cascadia Mono", "Consolas", "SF Mono", monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --glow: rgba(159, 211, 107, 0.08);
+  --grid: rgba(255, 255, 255, 0.025);
+  --overlay-top: rgba(11, 15, 12, 0.45);
+  --overlay-bottom: rgba(11, 15, 12, 0.8);
+  --results-bg: rgba(18, 25, 18, 0.8);
+  --danger: #ff6b5a;
+  color-scheme: dark;
+}
+
+/* Light theme: chosen with the toggle in the nav, or by the system setting. */
+:root[data-theme="light"] {
+  --bg: #f3f5ef;
+  --panel: #ffffff;
+  --panel-2: #eef2e9;
+  --line: #d3dccd;
+  --text: #18211a;
+  --muted: #5b6858;
+  --accent: #3f7d17;
+  --accent-ink: #ffffff;
+  --warn: #9a6a00;
+  --focus: #2d5c0f;
+  --glow: rgba(63, 125, 23, 0.08);
+  --grid: rgba(0, 0, 0, 0.035);
+  --overlay-top: rgba(243, 245, 239, 0.55);
+  --overlay-bottom: rgba(243, 245, 239, 0.88);
+  --results-bg: rgba(255, 255, 255, 0.86);
+  --danger: #c4372a;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -21,9 +49,9 @@ html, body { margin: 0; }
 body {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse at top, rgba(159, 211, 107, 0.08), transparent 60%),
-    repeating-linear-gradient(0deg, transparent 0 31px, rgba(255, 255, 255, 0.025) 31px 32px),
-    repeating-linear-gradient(90deg, transparent 0 31px, rgba(255, 255, 255, 0.025) 31px 32px),
+    radial-gradient(ellipse at top, var(--glow), transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0 31px, var(--grid) 31px 32px),
+    repeating-linear-gradient(90deg, transparent 0 31px, var(--grid) 31px 32px),
     var(--bg);
   color: var(--text);
   font: 16px/1.5 var(--sans);
@@ -173,9 +201,9 @@ tr:last-child td { border-bottom: 0; }
   position: fixed; inset: 0; z-index: -1; opacity: 0;
   background: center / cover no-repeat; transition: opacity 0.8s ease;
 }
-#bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(11, 15, 12, 0.45), rgba(11, 15, 12, 0.8)); }
+#bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(var(--overlay-top), var(--overlay-bottom)); }
 #bg.on { opacity: 0.45; }
-.card.results { background: rgba(18, 25, 18, 0.8); backdrop-filter: blur(3px); }
+.card.results { background: var(--results-bg); backdrop-filter: blur(3px); }
 
 .debug { display: block; margin-top: 4px; font: 12px/1.4 var(--mono); color: var(--warn); }
 .debug-live { margin: -10px 0 14px; }
@@ -325,7 +353,7 @@ select.text-input { appearance: auto; }
 td.wrap { white-space: normal; min-width: 140px; }
 .verdict.ok { --hero: var(--accent) !important; }
 .verdict.maybe { --hero: var(--warn) !important; }
-.verdict.no { --hero: #ff6b5a !important; }
+.verdict.no { --hero: var(--danger) !important; }
 .verdict .job-name { color: var(--hero); }
 dl.req { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; font-size: 14px; margin: 10px 0; }
 dl.req dt { font-weight: 700; color: var(--muted); }
@@ -356,3 +384,11 @@ dl.req dd { margin: 0; }
 .bingo-board.play { max-width: 560px; grid-auto-rows: minmax(88px, auto); }
 .bingo-board.play .bingo-cell { aspect-ratio: auto; padding: 6px 4px; font-size: 12px; line-height: 1.2; }
 @media (max-width: 400px) { .bingo-board.play .bingo-cell { font-size: 10.5px; } }
+
+/* Theme toggle. */
+.theme-toggle { padding: 7px 11px; border-radius: 999px; font-size: 15px; line-height: 1; }
+.card { box-shadow: 0 20px 60px color-mix(in srgb, #000 35%, transparent); }
+:root[data-theme="light"] .card { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06); }
+:root[data-theme="light"] .radar-ring.mid { stroke: #b9c4b3; }
+:root[data-theme="light"] .toast { box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15); }
+.nav-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }

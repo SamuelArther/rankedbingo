@@ -916,8 +916,19 @@ function renderNav() {
   const nav = document.getElementById("nav");
   const tabs = [["quiz", "Quiz"], ["branches", "Branches"], ["types", "Service"], ["training", "Training"], ["pay", "Pay"], ["join", "Join"], ["fun", "Fun"]];
   const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page;
+  const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
   nav.replaceChildren(
-    el("a", { class: "brand", href: "#/quiz" }, "Ranked Bingo"),
+    el("div", { class: "nav-top" },
+      el("a", { class: "brand", href: "#/quiz" }, "Ranked Bingo"),
+    el("button", {
+      class: "theme-toggle", "aria-label": theme === "light" ? "Switch to dark mode" : "Switch to light mode",
+      onclick: () => {
+        const nextTheme = theme === "light" ? "dark" : "light";
+        document.documentElement.dataset.theme = nextTheme;
+        try { localStorage.setItem("rankedbingo.theme", nextTheme); } catch { /* not saved */ }
+        renderNav();
+      },
+    }, theme === "light" ? "🌙" : "☀️")),
     el("div", { class: "tabs" }, tabs.map(([id, label]) =>
       el("a", { class: "tab" + (current === id ? " active" : ""), href: `#/${id}`, "aria-current": current === id ? "page" : null }, label))),
   );
@@ -1108,3 +1119,8 @@ window.branchQuiz = {
 };
 
 render();
+
+// Install as an app and work offline (only over https, like GitHub Pages).
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "127.0.0.1" || location.hostname === "localhost")) {
+  navigator.serviceWorker.register("sw.js").catch(() => { /* the site still works without it */ });
+}

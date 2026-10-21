@@ -36,13 +36,21 @@ def build(folder):
             track = clean(raw.get("track")).lower()
             if not title or track not in TRACKS:
                 continue
-            code = clean(raw.get("code")) or None
-            job_id = slug(code or title)
-            if (job_id, track) in seen:
+            # Skip jobs nobody can start in (senior-only codes), when marked.
+            if raw.get("entryLevel") is False:
                 continue
-            seen.add((job_id, track))
-            # Ids must be unique per branch even when a code repeats across tracks.
-            if any(j["id"] == job_id for j in jobs):
+            code = clean(raw.get("code")) or None
+            # Only exact repeats are dropped; different jobs can share a code.
+            if (title.lower(), track) in seen:
+                continue
+            seen.add((title.lower(), track))
+            # Ids must be unique per branch: the code when it's free, otherwise
+            # code plus title (and the track as a last resort).
+            used = {j["id"] for j in jobs}
+            job_id = slug(code or title)
+            if job_id in used:
+                job_id = slug(f"{code or ''} {title}")
+            if job_id in used:
                 job_id = f"{job_id}-{track}"
             job = {
                 "id": job_id,

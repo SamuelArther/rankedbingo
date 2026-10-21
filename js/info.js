@@ -245,7 +245,7 @@ function renderJoin() {
           el("strong", {}, f.test),
           rows.length
             ? el("ul", { class: "list", style: "margin-top:6px; font-size:14px" }, rows.map(({ e, r }) => el("li", {},
-                el("span", { class: "mark", style: `color:${r.status === "pass" ? "var(--accent)" : r.status === "fail" ? "#ff6b5a" : "var(--muted)"}` }, r.status === "pass" ? "✓" : r.status === "fail" ? "✗" : "–"),
+                el("span", { class: "mark", style: `color:${r.status === "pass" ? "var(--accent)" : r.status === "fail" ? "var(--danger)" : "var(--muted)"}` }, r.status === "pass" ? "✓" : r.status === "fail" ? "✗" : "–"),
                 el("span", {}, `${e.name}: `, el("span", { class: "muted" }, r.status === "na" ? r.note : `minimum ${r.note}`)))))
             : el("p", { class: "muted", style: "margin:6px 0 0; font-size:14px" }, "Enter numbers above to compare."));
       }));
