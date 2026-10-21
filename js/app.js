@@ -407,7 +407,8 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
 
     el("div", { class: "actions" },
       mine
-        ? [el("button", { class: "primary", onclick: restart }, "Take it again"),
+        ? [el("button", { class: "primary", onclick: () => { newQuiz("full"); startQuiz("full"); } }, "Take it again"),
+           el("button", { onclick: () => { newQuiz("quick"); startQuiz("quick"); } }, "Quick mode (15 questions)"),
            el("button", { onclick: (e) => copyResult(e, r) }, "Copy my result")]
         : el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz yourself"),
       el("a", { class: "button", href: branchLink(top.id, tracks[0].id, components[0].id) }, `Explore the ${info.name}`)),
