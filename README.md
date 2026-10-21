@@ -29,6 +29,6 @@ Training facts were checked against official branch recruiting and military site
 
 Add `?debug` to the URL to see what each answer scores while playtesting.
 
-Everything runs in one offline HTML file (`index.html`) with no dependencies or tracking.
+Plain HTML, CSS and JavaScript with no dependencies, build step or tracking: `index.html`, `css/style.css`, `js/data.js` (content), `js/logic.js` (scoring) and `js/app.js` (pages).
 
 Just for fun. Not affiliated with or endorsed by the U.S. military or any branch. Talk to recruiters before deciding anything.
