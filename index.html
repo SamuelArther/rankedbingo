@@ -177,6 +177,14 @@
   th { font: 600 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: var(--panel-2); }
   tr:last-child td { border-bottom: 0; }
 
+  #bg {
+    position: fixed; inset: 0; z-index: -1; opacity: 0;
+    background: center / cover no-repeat; transition: opacity 0.8s ease;
+  }
+  #bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(11, 15, 12, 0.45), rgba(11, 15, 12, 0.8)); }
+  #bg.on { opacity: 0.45; }
+  .card.results { background: rgba(18, 25, 18, 0.8); backdrop-filter: blur(3px); }
+
   .debug { display: block; margin-top: 4px; font: 12px/1.4 var(--mono); color: var(--warn); }
   .debug-live { margin: -10px 0 14px; }
 
@@ -234,6 +242,7 @@
 </style>
 </head>
 <body>
+<div id="bg" aria-hidden="true"></div>
 <nav id="nav" aria-label="Sections"></nav>
 <main id="app" aria-live="polite"></main>
 <footer>
@@ -990,6 +999,7 @@ function el(tag, attrs = {}, ...children) {
 function render() {
   parseRoute();
   renderNav();
+  setBackground(null);
   app.replaceChildren();
   if (route.page === "branches") renderBranches();
   else if (route.page === "branch") renderBranch();
@@ -1122,6 +1132,7 @@ function renderResults() {
   // quietly picking one on decimals.
   const tied = ranked.filter((r) => r.pct === top.pct);
   const isTie = tied.length > 1;
+  setBackground(top.id);
   const names = joinWords(tied.map((r) => BRANCHES[r.id].name));
   const info = BRANCHES[top.id];
   const components = componentScore(state.answers);
@@ -1178,7 +1189,7 @@ function renderResults() {
         "Top role: ", el("strong", {}, topJobs(state.answers, r.id, tracks[0].id, 1)[0].n)));
   });
 
-  app.append(el("div", { class: "card fade-in" },
+  app.append(el("div", { class: "card results fade-in" },
     el("div", { class: "eyebrow" }, isTie ? "It's a tie!" : "Your best match"),
     el("div", { class: "result-hero", style: `--hero:${info.color}` },
       el("h1", {}, names),
@@ -1452,6 +1463,16 @@ const COMPONENT_DETAILS = {
     life: ["Your unit is in your state and answers to your governor", "You can be called up for disasters and emergencies in your state", "You can also be mobilized for federal missions and deployments", "Many states offer tuition help for Guard members"],
   },
 };
+
+// Faded background photos behind the results, by branch (no Coast Guard photo yet).
+const BG_IMAGES = { army: "images/army.jpg", usmc: "images/usmc.jpg", navy: "images/navy.jpg", af: "images/af.jpg", sf: "images/sf.jpg" };
+
+function setBackground(branch) {
+  const bg = document.getElementById("bg");
+  const src = branch && BG_IMAGES[branch];
+  if (src) bg.style.backgroundImage = `url("${src}")`;
+  bg.classList.toggle("on", Boolean(src));
+}
 
 const route = { page: "quiz", branch: null, track: "enlisted", type: "active" };
 
