@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Branch Finder</title>
+<title>Ranked Bingo</title>
 <meta name="description" content="Answer questions about how you live, work and think to see which U.S. military branch fits you best.">
 <style>
   :root {
@@ -409,6 +409,32 @@ const QUESTIONS = [
     { t: "Not very", w: { travel: 1 } },
     { t: "I want to move far away", w: { travel: 2 } },
   ] },
+  // Role questions also score tracks (k): enlisted or officer.
+  { topic: "Role", q: "Do you plan to get a four-year college degree?", options: [
+    { t: "Yes, before I join", w: {}, k: { officer: 2 } },
+    { t: "Maybe, later or while I serve", w: {}, k: { enlisted: 1, officer: 1 } },
+    { t: "No, I want to start right after high school", w: {}, k: { enlisted: 2 } },
+  ] },
+  { topic: "Role", q: "In a group project, you're usually the one who...", options: [
+    { t: "Plans it and hands out the tasks", w: {}, k: { officer: 2 } },
+    { t: "Actually gets the work done", w: {}, k: { enlisted: 2 } },
+    { t: "Becomes the expert on one part of it", w: { tech: 1 }, k: { enlisted: 1 } },
+    { t: "Keeps everyone motivated and on track", w: {}, k: { officer: 1, enlisted: 1 } },
+  ] },
+  { topic: "Role", q: "Would you rather...", options: [
+    { t: "Master a specific skill and be the go-to person for it", w: {}, k: { enlisted: 2 } },
+    { t: "Lead a team and be responsible for its results", w: {}, k: { officer: 2 } },
+  ] },
+  { topic: "Role", q: "Your team messes up and you're the one who has to answer for it. How does that feel?", options: [
+    { t: "That's part of leading. I'm in", w: {}, k: { officer: 2 } },
+    { t: "Fair, if I was in charge", w: {}, k: { officer: 1, enlisted: 1 } },
+    { t: "I'd rather just be responsible for my own work", w: {}, k: { enlisted: 2 } },
+  ] },
+  { topic: "Role", q: "Planning meetings, briefings and paperwork:", options: [
+    { t: "Fine with me. Someone has to run things", w: { comfort: 1 }, k: { officer: 2 } },
+    { t: "Okay in small doses", w: {}, k: { officer: 1, enlisted: 1 } },
+    { t: "I'd rather be out doing the actual job", w: { physical: 1 }, k: { enlisted: 2 } },
+  ] },
   // Service type questions also score components (c): active duty, reserve, guard.
   { topic: "Service type", q: "How big a part of your life do you want the military to be?", options: [
     { t: "All of it. It's my full-time job", w: {}, c: { active: 2 } },
@@ -454,6 +480,19 @@ const COMPONENTS = {
 
 const COMPONENT_ORDER = ["active", "reserve", "guard"];
 
+const TRACKS = {
+  enlisted: {
+    name: "Enlisted",
+    about: "Most of the military. You join with a high school diploma, train for a specific job and do the hands-on work. As you get promoted you become a noncommissioned officer (NCO) and lead the people doing that work.",
+  },
+  officer: {
+    name: "Officer",
+    about: "Officers plan missions and lead units, and they're responsible for everyone under them. You usually need a four-year degree, and you commission through a service academy, ROTC in college, or officer candidate or training school after college.",
+  },
+};
+
+const TRACK_ORDER = ["enlisted", "officer"];
+
 const TRAIT_IDS = Object.keys(TRAITS);
 
 // The user's profile is the average nudge per trait. Traits answered more
@@ -496,20 +535,27 @@ function score(answers) {
     .sort((a, b) => b.raw - a.raw || ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 }
 
-const COMPONENT_MAX = Object.fromEntries(COMPONENT_ORDER.map((k) => [
-  k,
-  QUESTIONS.reduce((sum, q) => sum + Math.max(0, ...q.options.map((o) => (o.c && o.c[k]) || 0)), 0),
-]));
+// Scores a set of options (components or tracks) stored under `field` on each
+// answer, as a share of the most each option could have earned.
+function categoryScore(answers, field, ids) {
+  const raw = Object.fromEntries(ids.map((k) => [k, 0]));
+  const max = Object.fromEntries(ids.map((k) => [k, 0]));
+  QUESTIONS.forEach((q, i) => {
+    for (const k of ids) max[k] += Math.max(0, ...q.options.map((o) => (o[field] && o[field][k]) || 0));
+    const picked = answers[i] == null ? {} : q.options[answers[i]][field] || {};
+    for (const k of ids) raw[k] += picked[k] || 0;
+  });
+  return ids
+    .map((k) => ({ id: k, pct: max[k] ? Math.round((raw[k] / max[k]) * 100) : 0 }))
+    .sort((a, b) => b.pct - a.pct || ids.indexOf(a.id) - ids.indexOf(b.id));
+}
 
 function componentScore(answers) {
-  const raw = Object.fromEntries(COMPONENT_ORDER.map((k) => [k, 0]));
-  answers.forEach((idx, i) => {
-    const c = QUESTIONS[i].options[idx].c || {};
-    for (const k of COMPONENT_ORDER) raw[k] += c[k] || 0;
-  });
-  return COMPONENT_ORDER
-    .map((k) => ({ id: k, pct: Math.round((raw[k] / COMPONENT_MAX[k]) * 100) }))
-    .sort((a, b) => b.pct - a.pct || COMPONENT_ORDER.indexOf(a.id) - COMPONENT_ORDER.indexOf(b.id));
+  return categoryScore(answers, "c", COMPONENT_ORDER);
+}
+
+function trackScore(answers) {
+  return categoryScore(answers, "k", TRACK_ORDER);
 }
 
 // Turns a branch and component into a real service option. Only the Army and
@@ -588,10 +634,10 @@ function render() {
 
 function renderIntro() {
   app.append(el("div", { class: "card fade-in" },
-    el("div", { class: "eyebrow" }, "Branch Finder"),
+    el("div", { class: "eyebrow" }, "Ranked Bingo"),
     el("h1", {}, "Which military branch fits you?"),
     el("p", { class: "muted" },
-      `${QUESTIONS.length} questions about how you like to live, work, train and think. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. The last few questions decide between Active Duty, the Reserve and the National Guard.`),
+      `${QUESTIONS.length} questions about how you like to live, work, train and think. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. The last few questions decide enlisted or officer, and Active Duty, the Reserve or the National Guard.`),
     el("div", { class: "chips branch-strip" },
       ORDER.map((b) => el("span", { class: "chip" },
         el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name))),
@@ -657,6 +703,8 @@ function renderResults() {
   const headsUp = clashes(user, top.id).slice(0, 3);
   const components = componentScore(state.answers);
   const option = serviceOption(top.id, components[0].id);
+  const tracks = trackScore(state.answers);
+  const track = TRACKS[tracks[0].id];
   const strongest = Object.entries(user)
     .filter(([, u]) => Math.abs(u.value) >= 1)
     .sort((a, b) => b[1].weight * Math.abs(b[1].value) - a[1].weight * Math.abs(a[1].value))
@@ -691,7 +739,7 @@ function renderResults() {
       el("h1", {}, info.name),
       el("div", { class: "pct" }, `${top.pct}% MATCH`),
       el("p", { style: "margin-top:12px" }, info.tagline),
-      el("p", { style: "margin:0" }, "Best way to serve: ", el("strong", {}, option.title))),
+      el("p", { style: "margin:0" }, "Best way to serve: ", el("strong", {}, `${option.title}, ${track.name}`))),
     el("p", {}, info.about),
 
     strongest.length ? [
@@ -731,6 +779,19 @@ function renderResults() {
     el("p", { style: "margin:14px 0 0" }, el("strong", {}, COMPONENTS[components[0].id].name + ": "), COMPONENTS[components[0].id].about),
     option.note ? el("div", { class: "note", style: "margin-top:12px" }, option.note) : null,
 
+    el("div", { class: "section-title" }, "Enlisted or officer"),
+    el("div", { class: "bars" }, tracks.map((r) => {
+      const fill = el("div", { style: "background:var(--accent)" });
+      requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = r.pct + "%"; }));
+      return el("div", { class: "bar-row" },
+        el("span", {}, TRACKS[r.id].name),
+        el("div", { class: "bar", role: "img", "aria-label": `${TRACKS[r.id].name} ${r.pct}%` }, fill),
+        el("span", { class: "num" }, r.pct + "%"));
+    })),
+    el("p", { style: "margin:14px 0 0" }, el("strong", {}, track.name + ": "), track.about),
+    el("p", { class: "muted", style: "margin:8px 0 0; font-size:14px" },
+      "Not set in stone: enlisted members can become officers later through commissioning programs, and NCOs lead plenty of people too."),
+
     el("div", { class: "actions" },
       el("button", { class: "primary", onclick: restart }, "Take it again"),
       el("button", { onclick: copyResult }, "Copy my result")),
@@ -746,7 +807,8 @@ function restart() {
 async function copyResult(e) {
   const ranked = score(state.answers);
   const option = serviceOption(ranked[0].id, componentScore(state.answers)[0].id);
-  const text = `My Branch Finder result: ${option.title}\n` +
+  const track = TRACKS[trackScore(state.answers)[0].id];
+  const text = `My Ranked Bingo result: ${option.title}, ${track.name}\n` +
     ranked.map((r) => `${BRANCHES[r.id].name}: ${r.pct}%`).join("\n");
   const btn = e.currentTarget;
   try {
@@ -768,7 +830,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // Exposed for automated checks.
-window.branchQuiz = { QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, serviceOption, state, render };
+window.branchQuiz = { QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, trackScore, serviceOption, state, render };
 
 render();
 </script>
