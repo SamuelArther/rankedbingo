@@ -118,6 +118,65 @@
   .option.selected { border-color: var(--accent); background: rgba(159, 211, 107, 0.1); }
   .option.selected .key { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
+  nav#nav {
+    width: 100%; max-width: 680px; display: flex; flex-wrap: wrap; align-items: center;
+    justify-content: space-between; gap: 10px; margin-bottom: 18px;
+  }
+  .brand { font: 700 15px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); text-decoration: none; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tab {
+    padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line);
+    color: var(--muted); text-decoration: none; font-size: 14px; background: var(--panel);
+  }
+  .tab.active { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+
+  a { color: var(--accent); }
+  a.button {
+    display: inline-block; text-decoration: none; color: var(--text);
+    border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 12px 18px;
+  }
+  a.button.primary { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .back-link { font-size: 14px; text-decoration: none; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 18px; }
+  .branch-card {
+    display: block; text-decoration: none; color: var(--text);
+    background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--hero);
+    border-radius: 12px; padding: 16px;
+  }
+  @media (hover: hover) { .branch-card:hover, .tab:hover { border-color: var(--accent); } }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .fact { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; font-size: 14px; }
+  .fact-k { font: 600 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+  .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 18px; }
+
+  .seg-row { display: grid; gap: 6px; margin-top: 14px; }
+  .seg-label { font: 600 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg-item {
+    padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--text); text-decoration: none; font-size: 14px;
+  }
+  .seg-item.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  .seg-item.disabled { opacity: 0.4; text-decoration: line-through; cursor: not-allowed; }
+
+  .steps { margin: 0; padding-left: 22px; display: grid; gap: 12px; }
+  .steps.compact { gap: 8px; font-size: 15px; }
+  .steps li::marker { color: var(--accent); font: 700 14px var(--mono); }
+
+  details.job summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  details.job summary::-webkit-details-marker { display: none; }
+  details.job summary::after { content: "+"; font: 700 18px var(--mono); color: var(--hero); }
+  details.job[open] summary::after { content: "–"; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font: 600 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: var(--panel-2); }
+  tr:last-child td { border-bottom: 0; }
+
   .debug { display: block; margin-top: 4px; font: 12px/1.4 var(--mono); color: var(--warn); }
   .debug-live { margin: -10px 0 14px; }
 
@@ -175,6 +234,7 @@
 </style>
 </head>
 <body>
+<nav id="nav" aria-label="Sections"></nav>
 <main id="app" aria-live="polite"></main>
 <footer>
   Just for fun. Not affiliated with or endorsed by the U.S. military or any branch.
@@ -709,20 +769,22 @@ function interestVector(answers) {
   return v;
 }
 
-// Ranks a branch's jobs on the chosen track. Each job's score is the user's
-// interest in its tags, averaged by tag weight, so a focused job (Pilot) beats
-// a broad one unless the user's interests really are spread across its tags.
+// Ranks a branch's jobs on the chosen track. A job scores the user's interest
+// in its best-matching tag, plus half credit for the next one, a quarter for
+// the one after, and so on (main tags count double). So a job is driven by
+// the user's strongest matching interest, extra matching tags add a bonus,
+// and on a tie the more focused job wins.
 function topJobs(answers, branch, track, count = 3) {
   const user = interestVector(answers);
   return JOBS[branch]
     .filter((j) => j.tr === track)
     .map((j, order) => {
-      const dot = Object.entries(j.i).reduce((a, [k, x]) => a + x * (user[k] || 0), 0);
-      const total = Object.values(j.i).reduce((a, x) => a + x, 0);
+      const parts = Object.entries(j.i).map(([k, x]) => (user[k] || 0) * (x / 2)).sort((a, b) => b - a);
+      const fit = parts.reduce((a, v, n) => a + v / 2 ** n, 0);
       const shared = Object.keys(j.i).filter((k) => user[k]).sort((a, b) => user[b] * j.i[b] - user[a] * j.i[a]);
-      return { ...j, fit: dot / total, shared, order };
+      return { ...j, fit, shared, order, tags: parts.length };
     })
-    .sort((a, b) => b.fit - a.fit || a.order - b.order)
+    .sort((a, b) => b.fit - a.fit || a.tags - b.tags || a.order - b.order)
     .slice(0, count);
 }
 
@@ -813,7 +875,7 @@ function serviceOption(branch, component) {
   if (branch === "sf") {
     return {
       title: "Space Force (part-time)",
-      note: "The Space Force has no separate Reserve or National Guard. A law passed in late 2023 lets it offer part-time service inside the Space Force itself, but spots are limited, so ask a recruiter. The Air Force Reserve and Air National Guard are the closest part-time alternatives.",
+      note: "The Space Force has no separate Reserve or National Guard. A law passed in late 2023 lets it offer part-time service inside the Space Force itself, and it selected its first part-time Guardians (transferring from the Air Force Reserve) in 2026. Spots are limited, so ask a recruiter. The Air Force Reserve and Air National Guard are the closest part-time alternatives.",
     };
   }
   if (component === "reserve") return { title: `${name} Reserve` };
@@ -872,12 +934,20 @@ function el(tag, attrs = {}, ...children) {
 }
 
 function render() {
+  parseRoute();
+  renderNav();
   app.replaceChildren();
-  if (state.step < 0) renderIntro();
+  if (route.page === "branches") renderBranches();
+  else if (route.page === "branch") renderBranch();
+  else if (route.page === "types") renderTypes();
+  else if (route.page === "training") renderTraining();
+  else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) renderQuestion();
   else renderResults();
   window.scrollTo({ top: 0 });
 }
+
+window.addEventListener("hashchange", render);
 
 function renderIntro() {
   app.append(el("div", { class: "card fade-in" },
@@ -1122,7 +1192,8 @@ function renderResults() {
 
     el("div", { class: "actions" },
       el("button", { class: "primary", onclick: restart }, "Take it again"),
-      el("button", { onclick: copyResult }, "Copy my result")),
+      el("button", { onclick: copyResult }, "Copy my result"),
+      el("a", { class: "button", href: branchLink(top.id, tracks[0].id, components[0].id) }, `Explore the ${info.name}`)),
   ));
 }
 
@@ -1158,6 +1229,7 @@ async function copyResult(e) {
 
 document.addEventListener("keydown", (e) => {
   if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (route.page !== "quiz") return;
   if (state.step < 0 || state.step >= QUESTIONS.length) return;
   const n = Number(e.key);
   if (n >= 1 && n <= QUESTIONS[state.step].options.length) choose(n - 1);
@@ -1166,8 +1238,355 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowRight" || e.key === "Enter") next();
 });
 
-// Exposed for automated checks.
-window.branchQuiz = { QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, trackScore, serviceOption, topJobs, interestVector, JOBS, state, render };
+// ---------------------------------------------------------------------------
+// Explorer: branch pages, service types and training.
+
+// Facts and typical experience per branch. Training lengths and locations are
+// typical and change over time, so the page tells readers to confirm them.
+const DETAILS = {
+  army: {
+    members: "Soldiers", founded: "1775", dept: "Department of the Army (Department of Defense)", motto: "This We'll Defend",
+    life: "Most Soldiers live on large posts in the U.S., and some are stationed overseas in places like Germany, Korea and Japan. Days usually start with early-morning PT (physical training), then work in your job. Field exercises mean days or weeks living out of tents and vehicles. How often you deploy depends a lot on your unit and job.",
+    expect: ["Early-morning PT most days", "Field training: rucking, sleeping outside, living out of vehicles", "Moving to a new post every few years", "Huge variety of jobs, from infantry to cyber, medicine, aviation and logistics"],
+    fit: ["You want lots of job options", "You like being outdoors and on land", "You want a big organization with room to move around"],
+    notFit: ["You hate being outside in rough conditions", "You want to stay in one place your whole career"],
+    bootcamp: {
+      name: "Basic Combat Training (BCT)", length: "About 10 weeks",
+      where: "Fort Jackson (South Carolina), Fort Benning (Georgia), Fort Leonard Wood (Missouri) or Fort Sill (Oklahoma)",
+      leaders: "Drill sergeants",
+      phases: [
+        ["First weeks", "Drill sergeants, haircuts, uniforms, discipline, fitness and Army values."],
+        ["Middle weeks", "Rifle marksmanship, combat skills, first aid and land navigation."],
+        ["Final weeks", "Field exercises, then a multi-day final field test before graduation."],
+      ],
+    },
+    tech: {
+      name: "Advanced Individual Training (AIT)",
+      text: "After basic you go to AIT to learn your job. It can take a few weeks or more than a year, depending on the job. Some jobs, like infantry, combine basic and job training into One Station Unit Training (OSUT) at a single base.",
+    },
+    officer: "West Point (the U.S. Military Academy), Army ROTC in college, or Officer Candidate School (OCS) after you have a degree. New officers then attend a Basic Officer Leader Course for their field.",
+  },
+  usmc: {
+    members: "Marines", founded: "1775", dept: "Department of the Navy (Department of Defense)", motto: "Semper Fidelis (Always Faithful)",
+    life: "Marines are organized to deploy fast, often aboard Navy ships. Expect a strong focus on fitness, discipline and appearance in every job. Units train hard and often, and many Marines deploy on ship-based or overseas rotations. The culture is famously proud and tight-knit.",
+    expect: ["The toughest boot camp in the military", "Every Marine is trained as a rifleman first, whatever the job", "Strict standards for fitness, grooming and uniforms", "Deployments, including on Navy ships"],
+    fit: ["You want the hardest challenge", "You love tradition and a strong identity", "You want to be part of an elite, fast-moving force"],
+    notFit: ["You want a relaxed culture", "You want comfortable living conditions"],
+    bootcamp: {
+      name: "Recruit training", length: "About 13 weeks",
+      where: "Marine Corps Recruit Depot Parris Island (South Carolina) or San Diego (California)",
+      leaders: "Drill instructors",
+      phases: [
+        ["First phase", "Drill instructors, close-order drill, fitness, Marine Corps history and core values."],
+        ["Second phase", "Rifle qualification and field skills."],
+        ["Third phase", "The Crucible: a 54-hour test with little food and sleep. Finish it and you earn the Eagle, Globe and Anchor."],
+      ],
+    },
+    tech: {
+      name: "School of Infantry, then MOS school",
+      text: "Every Marine goes to the School of Infantry after boot camp. Infantry Marines attend the Infantry Training Battalion. Everyone else attends Marine Combat Training and then goes to the school for their job (MOS).",
+    },
+    officer: "The Naval Academy, Navy ROTC (Marine option), or Officer Candidates School in Quantico, Virginia. Every new Marine officer then spends about six months at The Basic School before training for their job.",
+  },
+  navy: {
+    members: "Sailors", founded: "1775", dept: "Department of the Navy (Department of Defense)", motto: null,
+    life: "Sailors alternate between time in home port and deployments at sea that can last several months. Ship life means close quarters, watch schedules and a crew that becomes family. Port visits can take you around the world. Many jobs are highly technical, and not every Sailor serves on a ship: there are shore, aviation and Seabee units too.",
+    expect: ["Deployments at sea that can last months", "Close quarters and shift work (\"watches\") aboard ships", "Port visits in other countries", "Very technical jobs, including nuclear power and aviation"],
+    fit: ["You want to see the world", "You like the ocean and ships", "You want technical training that transfers to civilian jobs"],
+    notFit: ["You get seasick easily", "You want to be home every night"],
+    bootcamp: {
+      name: "Recruit Training Command", length: "About 9 weeks",
+      where: "Great Lakes, Illinois (the Navy's only boot camp)",
+      leaders: "Recruit Division Commanders (RDCs)",
+      phases: [
+        ["First weeks", "Processing, uniforms, physical training and Navy customs."],
+        ["Middle weeks", "Firefighting, damage control, seamanship, swim qualification and weapons safety."],
+        ["Final test", "Battle Stations 21: an overnight series of shipboard emergencies on a simulated ship."],
+      ],
+    },
+    tech: {
+      name: "\"A\" School",
+      text: "Most Sailors go to an \"A\" School after boot camp to learn their rating (job). Advanced ratings, like the nuclear field, add more schools and long training pipelines. Some Sailors go straight to the fleet and learn on the job.",
+    },
+    officer: "The Naval Academy in Annapolis, Navy ROTC in college, or Officer Candidate School in Newport, Rhode Island.",
+  },
+  af: {
+    members: "Airmen", founded: "1947", dept: "Department of the Air Force (Department of Defense)", motto: "Aim High... Fly-Fight-Win",
+    life: "Most Airmen work regular shifts on well-equipped bases, many with good housing, gyms and dining. Lots of jobs are technical, from aircraft maintenance to cyber. Deployments happen, but many jobs deploy less often or for shorter periods than ground forces.",
+    expect: ["Generally comfortable bases and quality of life", "Lots of technical training", "College credit through the Community College of the Air Force", "Fewer field-style deployments for many jobs"],
+    fit: ["You like tech and aircraft", "You want a professional, relaxed-feeling culture", "You want skills that turn into a civilian career"],
+    notFit: ["You want to be on the front line", "You want the most intense physical challenge"],
+    bootcamp: {
+      name: "Basic Military Training (BMT)", length: "About 7.5 weeks",
+      where: "Joint Base San Antonio-Lackland, Texas",
+      leaders: "Military Training Instructors (MTIs)",
+      phases: [
+        ["First week", "Processing, uniforms, learning to march and the basics of military life."],
+        ["Middle weeks", "Fitness, drill, inspections, weapons training and Air Force core values."],
+        ["PACER FORGE", "A field training exercise that simulates deployed operations. It replaced the old BEAST week in 2022."],
+      ],
+    },
+    tech: {
+      name: "Technical training (tech school)",
+      text: "After BMT you go to tech school to learn your job (AFSC). It can take a few weeks or more than a year, and much of it counts as credit toward a Community College of the Air Force degree.",
+    },
+    officer: "The Air Force Academy in Colorado Springs, Air Force ROTC in college, or Officer Training School at Maxwell Air Force Base, Alabama.",
+  },
+  sf: {
+    members: "Guardians", founded: "2019", dept: "Department of the Air Force (Department of Defense)", motto: "Semper Supra (Always Above)",
+    life: "Guardians mostly work in operations centers running satellites, missile warning, space tracking, cyber and intelligence. Many work rotating shifts on watch. The branch is small and new, so people often get noticed and help shape how things are done.",
+    expect: ["Mostly indoor, screen-based work", "Shift work in operations centers", "A small, tech-focused branch still building its culture", "Fewer jobs to choose from than larger branches"],
+    fit: ["You love space and technology", "You want a small branch where you stand out", "You prefer brain work to field work"],
+    notFit: ["You want combat or field work", "You want lots of job variety"],
+    bootcamp: {
+      name: "Basic Military Training (Space Force)", length: "About 7.5 weeks",
+      where: "Joint Base San Antonio-Lackland, Texas, alongside Air Force trainees",
+      leaders: "Military Training Instructors (MTIs)",
+      phases: [
+        ["First weeks", "The same core as Air Force BMT: processing, drill, fitness and inspections."],
+        ["Middle weeks", "Weapons training, plus Space Force-specific classes on space history and the Guardian identity."],
+        ["Final weeks", "A field training exercise, then graduation as a Guardian."],
+      ],
+    },
+    tech: {
+      name: "Technical training",
+      text: "After BMT, Guardians go to technical training for their job. For example, space systems operators train at Vandenberg Space Force Base in California.",
+    },
+    officer: "The Air Force Academy, Air Force ROTC in college, or Officer Training School.",
+  },
+  cg: {
+    members: "Coast Guardsmen", founded: "1790 (as the Revenue Cutter Service)", dept: "Department of Homeland Security (can operate under the Navy in wartime)", motto: "Semper Paratus (Always Ready)",
+    life: "Coast Guard members work at stations, on cutters (ships) and at air stations, mostly in U.S. waters. Small boat stations sit in coastal towns, and duty often means being on call for search and rescue. Cutters patrol for weeks or months at a time, enforcing laws and stopping smuggling.",
+    expect: ["Missions at home: rescues, law enforcement, environmental protection", "Small units where everyone knows each other", "Being on call for emergencies", "Fewer people, so promotions and jobs can be competitive"],
+    fit: ["You want to save lives", "You want to stay closer to home", "You like boats, water and law enforcement"],
+    notFit: ["You want overseas combat missions", "You want a huge organization with tons of options"],
+    bootcamp: {
+      name: "Recruit training", length: "About 8 weeks",
+      where: "Training Center Cape May, New Jersey (the only Coast Guard boot camp)",
+      leaders: "Company Commanders",
+      phases: [
+        ["First weeks", "Processing, uniforms and the basics of military life."],
+        ["Middle weeks", "Seamanship, firefighting, swim tests, weapons training and Coast Guard history."],
+        ["Final weeks", "Drill, inspections and finding out your first unit assignment."],
+      ],
+    },
+    tech: {
+      name: "\"A\" School",
+      text: "Most members report to a unit first, learn on the job, and request \"A\" School later to learn their rating. Some go to \"A\" School right after boot camp.",
+    },
+    officer: "The Coast Guard Academy in New London, Connecticut, Officer Candidate School (also in New London), or the College Student Pre-Commissioning Initiative scholarship.",
+  },
+};
+
+// Longer descriptions for the service type pages.
+const COMPONENT_DETAILS = {
+  active: {
+    schedule: "Full-time, every day, like any job, plus deployments and field training.",
+    life: ["You live on or near a base, or on a ship", "Full-time pay, plus housing, food allowance and healthcare", "You move to a new duty station every few years", "Deployments depend on your branch and job"],
+  },
+  reserve: {
+    schedule: "Usually one weekend a month and about two weeks of training a year.",
+    life: ["You keep your civilian job or go to school", "You attend the same boot camp and job training as active duty", "Part-time pay and some benefits", "You can be called to active duty to support the force"],
+  },
+  guard: {
+    schedule: "Usually one weekend a month and about two weeks of training a year, like the Reserve.",
+    life: ["Your unit is in your state and answers to your governor", "You can be called up for disasters and emergencies in your state", "You can also be mobilized for federal missions and deployments", "Many states offer tuition help for Guard members"],
+  },
+};
+
+const route = { page: "quiz", branch: null, track: "enlisted", type: "active" };
+
+function parseRoute() {
+  const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
+  const parts = path.split("/").filter(Boolean);
+  const params = new URLSearchParams(query);
+  route.page = parts[0] || "quiz";
+  route.branch = ORDER.includes(parts[1]) ? parts[1] : null;
+  route.track = TRACK_ORDER.includes(params.get("track")) ? params.get("track") : "enlisted";
+  route.type = COMPONENT_ORDER.includes(params.get("type")) ? params.get("type") : "active";
+  if (route.page === "branch" && !route.branch) route.page = "branches";
+  if (!["quiz", "branches", "branch", "types", "training"].includes(route.page)) route.page = "quiz";
+}
+
+function branchLink(branch, track = "enlisted", type = "active") {
+  return `#/branch/${branch}?track=${track}&type=${type}`;
+}
+
+function renderNav() {
+  const nav = document.getElementById("nav");
+  const tabs = [["quiz", "Quiz"], ["branches", "Branches"], ["types", "Service types"], ["training", "Boot camp & training"]];
+  const current = route.page === "branch" ? "branches" : route.page;
+  nav.replaceChildren(
+    el("a", { class: "brand", href: "#/quiz" }, "Ranked Bingo"),
+    el("div", { class: "tabs" }, tabs.map(([id, label]) =>
+      el("a", { class: "tab" + (current === id ? " active" : ""), href: `#/${id}`, "aria-current": current === id ? "page" : null }, label))),
+  );
+}
+
+function renderBranches() {
+  app.append(el("div", { class: "fade-in" },
+    el("div", { class: "eyebrow" }, "Explore"),
+    el("h1", {}, "The six branches"),
+    el("p", { class: "muted" }, "Pick a branch to see what it does, what life is like, the jobs it offers, and how boot camp and job training work."),
+    el("div", { class: "grid" }, ORDER.map((b) => {
+      const info = BRANCHES[b], d = DETAILS[b];
+      return el("a", { class: "branch-card", href: branchLink(b), style: `--hero:${info.color}` },
+        el("div", { class: "job-path" }, `${d.members} · since ${d.founded.split(" ")[0]}`),
+        el("strong", { class: "job-name" }, info.name),
+        el("p", { class: "muted", style: "margin:6px 0 0" }, info.tagline));
+    })),
+  ));
+}
+
+function segmented(label, items, current, makeHref) {
+  return el("div", { class: "seg-row" },
+    el("span", { class: "seg-label" }, label),
+    el("div", { class: "seg", role: "group", "aria-label": label }, items.map(([id, text, disabled]) =>
+      disabled
+        ? el("span", { class: "seg-item disabled", title: disabled }, text)
+        : el("a", { class: "seg-item" + (current === id ? " active" : ""), href: makeHref(id), "aria-current": current === id ? "true" : null }, text))));
+}
+
+function renderBranch() {
+  const b = route.branch, info = BRANCHES[b], d = DETAILS[b];
+  const hasGuard = b === "army" || b === "af";
+  // A Guard link for a branch without a Guard shows its Reserve, with the note.
+  const { track } = route;
+  const type = route.type === "guard" && !hasGuard ? "reserve" : route.type;
+  const option = serviceOption(b, route.type);
+  const comp = COMPONENTS[type], compD = COMPONENT_DETAILS[type];
+  const jobs = JOBS[b].filter((j) => j.tr === track);
+
+  const steps = track === "enlisted"
+    ? [
+        ["Talk to a recruiter", "Ask questions, see which jobs are open, and start your paperwork."],
+        ["MEPS", "At the Military Entrance Processing Station you get a medical exam, pick your job and swear in. You take the ASVAB test there or beforehand at a testing site."],
+        [d.bootcamp.name, `${d.bootcamp.length} at ${d.bootcamp.where}.`],
+        [d.tech.name, d.tech.text],
+        [type === "active" ? "First duty station" : "Your home unit", type === "active" ? "You report to your first unit and start the job for real." : "You go home, return to work or school, and start drilling with your unit."],
+      ]
+    : [
+        ["Earn a commission", d.officer],
+        ["Officer training", "Your commissioning program teaches leadership, tactics and military basics. The format depends on the route: four years at an academy, ROTC classes during college, or a few months at officer candidate or training school."],
+        ["Job training", "New officers go to a course for their field before leading people in it."],
+        [type === "active" ? "First assignment" : "Your home unit", type === "active" ? "You take charge of your first team, section or platoon." : "You lead a part-time unit while keeping your civilian career."],
+      ];
+
+  app.append(el("div", { class: "fade-in" },
+    el("a", { class: "back-link", href: "#/branches" }, "← All branches"),
+    el("div", { class: "result-hero", style: `--hero:${info.color}; margin-top:12px` },
+      el("h1", {}, info.name),
+      el("div", { class: "pct" }, d.members.toUpperCase()),
+      el("p", { style: "margin-top:12px" }, info.tagline)),
+
+    el("div", { class: "facts" },
+      [["Founded", d.founded], ["Part of", d.dept], ["Members", d.members], d.motto ? ["Motto", d.motto] : null].filter(Boolean)
+        .map(([k, v]) => el("div", { class: "fact" }, el("span", { class: "fact-k" }, k), el("span", {}, v)))),
+
+    el("div", { class: "section-title" }, "What it does"),
+    el("p", {}, info.about),
+    el("div", { class: "section-title" }, "What life is like"),
+    el("p", {}, d.life),
+    el("ul", { class: "list good" }, d.expect.map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x)))),
+    el("div", { class: "two-col" },
+      el("div", {}, el("div", { class: "section-title" }, "Good fit if"),
+        el("ul", { class: "list good" }, d.fit.map((x) => el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, x))))),
+      el("div", {}, el("div", { class: "section-title" }, "Maybe not if"),
+        el("ul", { class: "list warn" }, d.notFit.map((x) => el("li", {}, el("span", { class: "mark" }, "!"), el("span", {}, x)))))),
+
+    el("div", { class: "card", style: "margin-top:28px" },
+      el("div", { class: "eyebrow" }, "Pick your path"),
+      segmented("Role", TRACK_ORDER.map((t) => [t, TRACKS[t].name]), track, (t) => branchLink(b, t, type)),
+      segmented("Service type", COMPONENT_ORDER.map((c) => [c, COMPONENTS[c].name,
+        c === "guard" && !hasGuard ? `The ${info.name} doesn't have a National Guard` : null]), type, (c) => branchLink(b, track, c)),
+      el("h2", { style: "margin-top:18px" }, `${option.title}, ${TRACKS[track].name}`),
+      option.note ? el("div", { class: "note", style: "margin-bottom:14px" }, option.note) : null,
+      el("p", {}, el("strong", {}, "Schedule: "), compD.schedule),
+      el("ul", { class: "list good" }, compD.life.map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x)))),
+      el("p", { style: "margin-top:12px" }, el("strong", {}, `${TRACKS[track].name}: `), TRACKS[track].about),
+
+      el("div", { class: "section-title" }, "Your path, step by step"),
+      el("ol", { class: "steps" }, steps.map(([t, x]) => el("li", {}, el("strong", {}, t), el("p", { class: "muted", style: "margin:2px 0 0" }, x)))),
+
+      el("div", { class: "section-title" }, `${TRACKS[track].name} jobs (${jobs.length} examples)`),
+      el("div", { class: "jobs" }, jobs.map((j) => el("details", { class: "job", style: `--hero:${info.color}` },
+        el("summary", {}, el("strong", { class: "job-name" }, j.n)),
+        el("p", { class: "muted", style: "margin:6px 0 0" }, j.d),
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, `Good for people into ${joinWords(Object.keys(j.i).map((k) => INTERESTS[k]))}.`),
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "Training: "),
+          track === "enlisted"
+            ? `${d.bootcamp.name}, then ${d.tech.name} for this job.`
+            : "Commissioning program, then the officer course for this field.")))),
+      el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
+        "Job names are simplified examples. Every branch has many more jobs, and availability depends on test scores, standards and openings."),
+    ),
+
+    el("div", { class: "section-title" }, "Boot camp"),
+    trainingCard(b),
+    el("div", { class: "actions" },
+      el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz"),
+      el("a", { class: "button", href: "#/training" }, "Compare all boot camps")),
+  ));
+}
+
+function trainingCard(b) {
+  const info = BRANCHES[b], d = DETAILS[b], bc = d.bootcamp;
+  return el("div", { class: "job", style: `--hero:${info.color}` },
+    el("div", { class: "job-path" }, `${info.name} · ${bc.length}`),
+    el("strong", { class: "job-name" }, bc.name),
+    el("p", { class: "muted", style: "margin:4px 0 10px" }, `${bc.where}. Led by ${bc.leaders.toLowerCase()}.`),
+    el("ol", { class: "steps compact" }, bc.phases.map(([t, x]) => el("li", {}, el("strong", {}, t), el("p", { class: "muted", style: "margin:2px 0 0" }, x)))),
+    el("p", { style: "margin:10px 0 0" }, el("strong", {}, `After: ${d.tech.name}. `), d.tech.text),
+    el("p", { style: "margin:8px 0 0" }, el("strong", {}, "Officers: "), d.officer));
+}
+
+function renderTypes() {
+  app.append(el("div", { class: "fade-in" },
+    el("div", { class: "eyebrow" }, "Explore"),
+    el("h1", {}, "Ways to serve"),
+    el("p", { class: "muted" }, "Every branch has full-time and part-time options, and every job is either enlisted or officer."),
+    el("div", { class: "section-title" }, "Service types"),
+    el("div", { class: "jobs" }, COMPONENT_ORDER.map((c) => el("div", { class: "job", style: "--hero:var(--accent)" },
+      el("strong", { class: "job-name" }, COMPONENTS[c].name),
+      el("p", { style: "margin:6px 0 0" }, COMPONENTS[c].about),
+      el("p", { style: "margin:8px 0 0" }, el("strong", {}, "Schedule: "), COMPONENT_DETAILS[c].schedule),
+      el("ul", { class: "list good", style: "margin-top:8px" }, COMPONENT_DETAILS[c].life.map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x))))))),
+    el("div", { class: "section-title" }, "Who has what"),
+    el("div", { class: "table-wrap" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Branch"), COMPONENT_ORDER.map((c) => el("th", {}, COMPONENTS[c].name)))),
+      el("tbody", {}, ORDER.map((b) => el("tr", {},
+        el("td", {}, el("a", { href: branchLink(b) }, BRANCHES[b].name)),
+        COMPONENT_ORDER.map((c) => {
+          const o = serviceOption(b, c);
+          const exact = c === "active" || !o.note;
+          return el("td", {}, exact ? el("a", { href: branchLink(b, "enlisted", c) }, o.title) : el("span", { class: "muted" }, b === "sf" ? "Part-time inside the Space Force" : "None (use the Reserve)"));
+        })))))),
+    el("div", { class: "section-title" }, "Enlisted or officer"),
+    el("div", { class: "two-col" }, TRACK_ORDER.map((t) => el("div", { class: "job", style: "--hero:var(--accent)" },
+      el("strong", { class: "job-name" }, TRACKS[t].name),
+      el("p", { style: "margin:6px 0 0" }, TRACKS[t].about)))),
+  ));
+}
+
+function renderTraining() {
+  app.append(el("div", { class: "fade-in" },
+    el("div", { class: "eyebrow" }, "Explore"),
+    el("h1", {}, "Boot camp & training"),
+    el("p", { class: "muted" }, "How you get from civilian to trained service member, branch by branch. Checked against official branch recruiting sites in October 2026. Lengths and locations change, so confirm them with a recruiter."),
+    el("div", { class: "section-title" }, "How it works everywhere"),
+    el("ol", { class: "steps" }, [
+      ["Recruiter", "You talk to a recruiter, check that you qualify, and start paperwork."],
+      ["MEPS", "At the Military Entrance Processing Station you get a medical exam, pick or reserve your job and swear in. You take the ASVAB test there or beforehand at a testing site."],
+      ["Ship to boot camp", "Haircuts, uniforms, shots and paperwork in the first days, then weeks of fitness, drill, discipline, weapons and military basics, led by instructors whose title depends on the branch."],
+      ["Job training", "After boot camp you learn your actual job. The school's name and length depend on the branch and job: from a few weeks to more than a year."],
+      ["Your first unit", "Active duty members report to a duty station. Reserve and Guard members return home and drill with their unit."],
+    ].map(([t, x]) => el("li", {}, el("strong", {}, t), el("p", { class: "muted", style: "margin:2px 0 0" }, x)))),
+    el("div", { class: "note", style: "margin-top:14px" }, "Tip: show up in shape. Practice running, push-ups, sit-ups or planks, and swimming before you ship."),
+    el("div", { class: "section-title" }, "Branch by branch"),
+    el("div", { class: "jobs" }, ORDER.map((b) => trainingCard(b))),
+  ));
+}
+window.branchQuiz = { DETAILS, route, QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, trackScore, serviceOption, topJobs, interestVector, JOBS, state, render };
 
 render();
 </script>

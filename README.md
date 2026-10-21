@@ -17,6 +17,18 @@ A quiz that matches you to the U.S. military branch that fits you best (Army, Ma
 - Five role questions score enlisted vs officer, and five service-type questions score Active Duty, Reserve and National Guard.
 - The final pick is always a real option, like "Air National Guard, Enlisted". Only the Army and Air Force have a National Guard, and the Space Force has no separate Reserve, so those cases fall back to the closest option with a note.
 
+## Explore
+
+Besides the quiz, the site has:
+
+- **Branches:** a page per branch covering what it does, what life is like, who it fits, and quick facts. A path picker (enlisted or officer, and Active Duty, Reserve or National Guard) explains that path step by step and lists example jobs with their training.
+- **Service types:** Active Duty, Reserve and National Guard explained, plus a table of which branch has what.
+- **Boot camp & training:** how enlistment works (recruiter, MEPS, boot camp, job training), then each branch's boot camp, job school and officer routes.
+
+Training facts were checked against official branch recruiting and military sites in October 2026. They change over time, so confirm with a recruiter.
+
+Add `?debug` to the URL to see what each answer scores while playtesting.
+
 Everything runs in one offline HTML file (`index.html`) with no dependencies or tracking.
 
 Just for fun. Not affiliated with or endorsed by the U.S. military or any branch. Talk to recruiters before deciding anything.
