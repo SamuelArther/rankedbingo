@@ -178,7 +178,7 @@ const TRAITS = {
   sea:       { pos: "lots of time at sea",              neg: "staying on dry land" },
   land:      { pos: "field work on land",               neg: "work away from the field" },
   air:       { pos: "aircraft and flying",              neg: "work away from aviation" },
-  space:     { pos: "space and satellites",             neg: "down-to-earth work" },
+  space:     { pos: "space and satellites",             neg: "work here on Earth rather than in space" },
   physical:  { pos: "hard physical challenges",         neg: "less physically demanding work" },
   tech:      { pos: "highly technical work",            neg: "hands-on, non-technical work" },
   tradition: { pos: "strict discipline and tradition",  neg: "a relaxed, professional culture" },
@@ -929,20 +929,36 @@ function renderResults() {
   const ranked = score(state.answers);
   const user = profile(state.answers);
   const top = ranked[0];
-  const second = ranked[1];
+  // Branches with the same rounded score are shown as a tie rather than
+  // quietly picking one on decimals.
+  const tied = ranked.filter((r) => r.pct === top.pct);
+  const isTie = tied.length > 1;
+  const names = joinWords(tied.map((r) => BRANCHES[r.id].name));
   const info = BRANCHES[top.id];
-  const why = fits(user, top.id).slice(0, 5);
-  const headsUp = clashes(user, top.id).slice(0, 3);
   const components = componentScore(state.answers);
-  const option = serviceOption(top.id, components[0].id);
   const tracks = trackScore(state.answers);
   const track = TRACKS[tracks[0].id];
-  const jobs = topJobs(state.answers, top.id, tracks[0].id);
-  const jobNote = interestNote(state.answers, top.id);
+  const options = tied.map((r) => serviceOption(r.id, components[0].id));
+  const jobNotes = tied.map((r) => interestNote(state.answers, r.id)).filter(Boolean);
   const strongest = Object.entries(user)
     .filter(([, u]) => Math.abs(u.value) >= 1)
     .sort((a, b) => b[1].weight * Math.abs(b[1].value) - a[1].weight * Math.abs(a[1].value))
     .slice(0, 6);
+
+  const why = tied.flatMap((r) => fits(user, r.id).slice(0, isTie ? 3 : 5)
+    .map((w) => `You lean toward ${w}, and so does the ${BRANCHES[r.id].name}.`));
+  const headsUp = tied.flatMap((r) => clashes(user, r.id).slice(0, isTie ? 2 : 3));
+
+  const jobCards = tied.flatMap((r) => {
+    const b = BRANCHES[r.id];
+    return topJobs(state.answers, r.id, tracks[0].id, isTie ? 2 : 3).map((j, n) =>
+      el("div", { class: "job", style: `--hero:${b.color}` },
+        el("div", { class: "job-path" }, `#${n + 1} · ${b.name} · ${track.name}`),
+        el("strong", { class: "job-name" }, j.n),
+        el("p", { class: "muted", style: "margin:4px 0 0" }, j.d),
+        j.shared.length ? el("p", { style: "margin:6px 0 0; font-size:14px" },
+          `Fits your interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null));
+  });
 
   const bars = ranked.map((r) => {
     const fill = el("div", { style: `background:${BRANCHES[r.id].color}` });
@@ -953,10 +969,11 @@ function renderResults() {
       el("span", { class: "num" }, r.pct + "%"));
   });
 
-  // Every branch within 10 points of the top is shown as a close match;
+  // Every other branch within 10 points of the top is shown as a close match;
   // otherwise just the runner-up.
-  const closeOnes = ranked.slice(1).filter((r) => top.pct - r.pct <= 10);
-  const others = closeOnes.length ? closeOnes : [second];
+  const rest = ranked.slice(tied.length);
+  const closeOnes = rest.filter((r) => top.pct - r.pct <= 10);
+  const others = closeOnes.length ? closeOnes : rest.slice(0, 1);
   const otherCards = others.map((r) => {
     const b = BRANCHES[r.id];
     const reasons = fits(user, r.id).slice(0, 2);
@@ -970,22 +987,20 @@ function renderResults() {
   });
 
   app.append(el("div", { class: "card fade-in" },
-    el("div", { class: "eyebrow" }, "Your best match"),
+    el("div", { class: "eyebrow" }, isTie ? "It's a tie!" : "Your best match"),
     el("div", { class: "result-hero", style: `--hero:${info.color}` },
-      el("h1", {}, info.name),
-      el("div", { class: "pct" }, `${top.pct}% MATCH`),
-      el("p", { style: "margin-top:12px" }, info.tagline),
-      el("p", { style: "margin:0" }, "Best way to serve: ", el("strong", {}, `${option.title}, ${track.name}`))),
-    el("p", {}, info.about),
+      el("h1", {}, names),
+      el("div", { class: "pct" }, isTie ? `${top.pct}% MATCH EACH` : `${top.pct}% MATCH`),
+      isTie
+        ? el("p", { style: "margin-top:12px" }, "Your answers fit these branches equally well, so both are worth a serious look.")
+        : el("p", { style: "margin-top:12px" }, info.tagline),
+      el("p", { style: "margin:0" }, isTie ? "Best ways to serve: " : "Best way to serve: ",
+        el("strong", {}, options.map((o) => `${o.title}, ${track.name}`).join(" or ")))),
+    tied.map((r) => el("p", {}, isTie ? el("strong", {}, BRANCHES[r.id].name + ": ") : null, BRANCHES[r.id].about)),
 
     el("div", { class: "section-title" }, "Top roles for you"),
-    el("div", { class: "jobs" }, jobs.map((j, n) => el("div", { class: "job", style: `--hero:${info.color}` },
-      el("div", { class: "job-path" }, `#${n + 1} · ${info.name} · ${track.name}`),
-      el("strong", { class: "job-name" }, j.n),
-      el("p", { class: "muted", style: "margin:4px 0 0" }, j.d),
-      j.shared.length ? el("p", { style: "margin:6px 0 0; font-size:14px" },
-        `Fits your interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null))),
-    jobNote ? el("div", { class: "note", style: "margin-top:12px" }, jobNote) : null,
+    el("div", { class: "jobs" }, jobCards),
+    jobNotes.map((n) => el("div", { class: "note", style: "margin-top:12px" }, n)),
     el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
       "Job names are simplified. Every branch has many more jobs, and which ones you can get depends on test scores, physical standards and openings."),
 
@@ -997,7 +1012,7 @@ function renderResults() {
     why.length ? [
       el("div", { class: "section-title" }, "Why you matched"),
       el("ul", { class: "list good" }, why.map((w) =>
-        el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, `You lean toward ${w}, and so does the ${info.name}.`)))),
+        el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, w)))),
     ] : null,
 
     headsUp.length ? [
@@ -1024,7 +1039,7 @@ function renderResults() {
         el("span", { class: "num" }, r.pct + "%"));
     })),
     el("p", { style: "margin:14px 0 0" }, el("strong", {}, COMPONENTS[components[0].id].name + ": "), COMPONENTS[components[0].id].about),
-    option.note ? el("div", { class: "note", style: "margin-top:12px" }, option.note) : null,
+    options.filter((o) => o.note).map((o) => el("div", { class: "note", style: "margin-top:12px" }, o.note)),
 
     el("div", { class: "section-title" }, "Enlisted or officer"),
     el("div", { class: "bars" }, tracks.map((r) => {
@@ -1053,12 +1068,17 @@ function restart() {
 
 async function copyResult(e) {
   const ranked = score(state.answers);
-  const option = serviceOption(ranked[0].id, componentScore(state.answers)[0].id);
+  const tied = ranked.filter((r) => r.pct === ranked[0].pct);
+  const componentId = componentScore(state.answers)[0].id;
   const trackId = trackScore(state.answers)[0].id;
-  const track = TRACKS[trackId];
-  const job = topJobs(state.answers, ranked[0].id, trackId, 1)[0];
-  const text = `My Ranked Bingo result: ${option.title}, ${track.name}\nTop role: ${job.n}\n` +
-    ranked.map((r) => `${BRANCHES[r.id].name}: ${r.pct}%`).join("\n");
+  const picks = tied.map((r) => {
+    const job = topJobs(state.answers, r.id, trackId, 1)[0];
+    return `${serviceOption(r.id, componentId).title}, ${TRACKS[trackId].name} (top role: ${job.n})`;
+  });
+  const header = tied.length > 1
+    ? ["My Ranked Bingo result: a tie!", ...picks]
+    : [`My Ranked Bingo result: ${picks[0]}`];
+  const text = [...header, ...ranked.map((r) => `${BRANCHES[r.id].name}: ${r.pct}%`)].join("\n");
   const btn = e.currentTarget;
   try {
     await navigator.clipboard.writeText(text);
