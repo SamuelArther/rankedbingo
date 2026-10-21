@@ -1,5 +1,13 @@
 "use strict";
 
+// Content in the chosen language. Jobs keep their English name as `key` for
+// lookups (like CIVILIAN_OVERRIDES) before the names are translated.
+Object.values(JOBS).flat().forEach((j) => { j.key = j.n; });
+translateContent(POOL, BINGO_POOL, BRANCHES, TRAITS, INTERESTS, COMPONENTS, TRACKS, JOBS, CIVILIAN,
+  CIVILIAN_OVERRIDES, INTEREST_NOTES, DETAILS, COMPONENT_DETAILS, BOOTCAMP_SQUARES, BADGES);
+document.documentElement.lang = LANG;
+document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
+
 // Skipped questions stay null in answers, so scoring simply ignores them.
 // `orders` holds each question's option display order (options are shuffled
 // unless the question is a scale).
@@ -109,10 +117,10 @@ function render() {
   else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) (state.mode === "bingo" ? renderBingoPlay() : renderQuestion());
   else renderResults();
-  const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training", shared: "Shared result", compare: "Compare results", fun: "Fun", pay: "Ranks & pay", join: "Can I join?" };
+  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?") };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name
-    : route.page === "jobs" || route.page === "job" ? `${BRANCHES[route.branch].name} jobs` : titles[route.page];
-  document.title = pageTitle ? `${pageTitle} · Ranked Bingo` : "Ranked Bingo";
+    : route.page === "jobs" || route.page === "job" ? T("{branch} jobs", { branch: BRANCHES[route.branch].name }) : titles[route.page];
+  document.title = pageTitle ? `${pageTitle} · ${T("Ranked Bingo")}` : T("Ranked Bingo");
   window.scrollTo({ top: 0 });
 }
 
@@ -123,26 +131,26 @@ function renderIntro() {
   const total = (m) => m.trait + m.interest + m.role + m.service;
   const resumable = state.resumeStep != null;
   app.append(el("div", { class: "card fade-in" },
-    el("div", { class: "eyebrow" }, "Ranked Bingo"),
-    el("h1", {}, "Which military branch fits you?"),
+    el("div", { class: "eyebrow" }, T("Ranked Bingo")),
+    el("h1", {}, T("Which military branch fits you?")),
     el("p", { class: "muted" },
-      `Questions about how you like to live, work, train and think, drawn from a pool of ${POOL.length}, so every quiz is a little different. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. Then a few questions pick your top jobs, enlisted or officer, and Active Duty, the Reserve or the National Guard.`),
+      T("Questions about how you like to live, work, train and think, drawn from a pool of {count}, so every quiz is a little different. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. Then a few questions pick your top jobs, enlisted or officer, and Active Duty, the Reserve or the National Guard.", { count: POOL.length })),
     el("div", { class: "chips branch-strip" },
       ORDER.map((b) => el("span", { class: "chip" },
         el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name))),
     resumable
-      ? el("div", { class: "note", style: "margin-bottom:14px" }, state.mode === "bingo" ? "You have a bingo card in progress." : `You have a quiz in progress (question ${state.resumeStep + 1} of ${QUESTIONS.length}).`)
+      ? el("div", { class: "note", style: "margin-bottom:14px" }, state.mode === "bingo" ? T("You have a bingo card in progress.") : T("You have a quiz in progress (question {n} of {total}).", { n: state.resumeStep + 1, total: QUESTIONS.length }))
       : null,
     el("div", { class: "actions", style: "margin-top:0" },
       resumable
-        ? el("button", { class: "primary", onclick: () => { state.step = state.resumeStep; state.resumeStep = null; render(); } }, "Continue")
+        ? el("button", { class: "primary", onclick: () => { state.step = state.resumeStep; state.resumeStep = null; render(); } }, T("Continue"))
         : null,
       el("button", { class: resumable ? "" : "primary", onclick: () => { if (resumable) newQuiz("full"); state.resumeStep = null; startQuiz("full"); } },
-        resumable ? `Start over (${total(full)} questions)` : "Start the quiz"),
-      el("button", { onclick: () => { if (resumable) newQuiz("quick"); state.resumeStep = null; startQuiz("quick"); } }, `Quick mode (${total(quick)} questions)`),
-      el("button", { onclick: () => { if (resumable) newQuiz("bingo"); state.resumeStep = null; startQuiz("bingo"); } }, "Bingo mode 🎯")),
+        resumable ? T("Start over ({count} questions)", { count: total(full) }) : T("Start the quiz")),
+      el("button", { onclick: () => { if (resumable) newQuiz("quick"); state.resumeStep = null; startQuiz("quick"); } }, T("Quick mode ({count} questions)", { count: total(quick) })),
+      el("button", { onclick: () => { if (resumable) newQuiz("bingo"); state.resumeStep = null; startQuiz("bingo"); } }, T("Bingo mode 🎯"))),
     el("p", { class: "muted", style: "margin:12px 0 0; font-size:14px" },
-      `The full quiz has ${total(full)} questions and takes about 8 minutes. Quick mode takes about 3 minutes but gives a rougher result. Bingo mode is a card of statements: tap the ones that fit you and hit Done.`),
+      T("The full quiz has {count} questions and takes about 8 minutes. Quick mode takes about 3 minutes but gives a rougher result. Bingo mode is a card of statements: tap the ones that fit you and hit Done.", { count: total(full) })),
   ));
 }
 
@@ -166,7 +174,7 @@ function renderQuestion() {
 
   app.append(el("div", { class: "card fade-in" },
     el("div", { class: "progress-row" },
-      el("span", {}, `Question ${i + 1} / ${QUESTIONS.length}`),
+      el("span", {}, T("Question {n} / {total}", { n: i + 1, total: QUESTIONS.length })),
       el("span", {}, q.topic)),
     el("div", { class: "progress" }, el("div", { style: `width:${(i / QUESTIONS.length) * 100}%` })),
     el("h2", {}, q.q),
@@ -174,11 +182,11 @@ function renderQuestion() {
       score(state.answers).slice(0, 3).map((r) => `${BRANCHES[r.id].name} ${r.pct}%`).join(" · ")) : null,
     el("div", { class: "options", role: "group", "aria-label": q.q }, options),
     el("button", { class: "skip" + (skipped ? " selected" : ""), "aria-pressed": String(skipped), onclick: skip },
-      "None of these fit me, skip"),
+      T("None of these fit me, skip")),
     el("div", { class: "nav" },
-      el("button", { onclick: back }, i === 0 ? "Intro" : "Back"),
+      el("button", { onclick: back }, i === 0 ? T("Intro") : T("Back")),
       el("button", { class: "primary", disabled: chosen == null && !skipped, onclick: next },
-        i === QUESTIONS.length - 1 ? "See my results" : "Next")),
+        i === QUESTIONS.length - 1 ? T("See my results") : T("Next"))),
   ));
 }
 
@@ -241,13 +249,13 @@ function renderResults() {
   const answered = state.answers.filter((a) => a != null).length;
   if (answered < minAnswers(QUESTIONS)) {
     app.append(el("div", { class: "card fade-in" },
-      el("div", { class: "eyebrow" }, "Not enough intel"),
-      el("h1", {}, "Answer a few more"),
+      el("div", { class: "eyebrow" }, T("Not enough intel")),
+      el("h1", {}, T("Answer a few more")),
       el("p", { class: "muted" },
-        `You answered ${answered} of ${QUESTIONS.length} questions. Answer at least ${minAnswers(QUESTIONS)} so there's enough to match you on.`),
+        T("You answered {answered} of {total} questions. Answer at least {min} so there's enough to match you on.", { answered, total: QUESTIONS.length, min: minAnswers(QUESTIONS) })),
       el("div", { class: "actions" },
-        el("button", { class: "primary", onclick: () => { state.step = state.skipped.size ? Math.min(...state.skipped) : 0; render(); } }, "Go back to skipped questions"),
-        el("button", { onclick: restart }, "Start over")),
+        el("button", { class: "primary", onclick: () => { state.step = state.skipped.size ? Math.min(...state.skipped) : 0; render(); } }, T("Go back to skipped questions")),
+        el("button", { onclick: restart }, T("Start over"))),
     ));
     return;
   }
@@ -286,11 +294,13 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
   const r = computeResult(qs, answers);
   const { ranked, top, tied, user, components, tracks, track, options } = r;
   const isTie = tied.length > 1;
-  setBackground(top.id);
+  setBackground(top.id, encodeAnswers(qs, answers));
   const names = joinWords(tied.map((x) => BRANCHES[x.id].name));
   const info = BRANCHES[top.id];
-  const you = mine ? "you" : (name || "they");
-  const your = mine ? "your" : (name ? `${name}'s` : "their");
+  // Sentences come in three versions: about you, about a named friend, or
+  // about "them" when a shared link has no name.
+  const who = (youText, nameText, theyText, vars = {}) =>
+    T(mine ? youText : name ? nameText : theyText, { name, ...vars });
   const jobNotes = tied.map((x) => interestNote(answers, x.id, qs)).filter(Boolean);
   const strongest = Object.entries(user)
     .filter(([, u]) => Math.abs(u.value) >= 1)
@@ -298,9 +308,9 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
     .slice(0, 6);
 
   const why = tied.flatMap((x) => fits(user, x.id).slice(0, isTie ? 3 : 5)
-    .map((w) => `${capitalize(you)} lean${mine || !name ? "" : "s"} toward ${w}, and so does the ${BRANCHES[x.id].name}.`));
-  const headsUp = tied.flatMap((x) => clashes(user, x.id).slice(0, isTie ? 2 : 3))
-    .map((h) => mine ? h : h.replace(", but you leaned", `, but ${you} leaned`));
+    .map((w) => who("You lean toward {trait}, and so does the {branch}.", "{name} leans toward {trait}, and so does the {branch}.", "They lean toward {trait}, and so does the {branch}.", { trait: w, branch: BRANCHES[x.id].name })));
+  const subject = mine ? null : name || "";
+  const headsUp = tied.flatMap((x) => clashes(user, x.id, subject).slice(0, isTie ? 2 : 3));
 
   const jobCards = tied.flatMap((x) => {
     const b = BRANCHES[x.id];
@@ -310,9 +320,9 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
         el("strong", { class: "job-name" }, j.n),
         el("p", { class: "muted", style: "margin:4px 0 0" }, j.d),
         j.shared.length ? el("p", { style: "margin:6px 0 0; font-size:14px" },
-          `Fits ${your} interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null,
-        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "After getting out: "), civilianCareers(j).join(", ")),
-        el("a", { href: branchLink(x.id, tracks[0].id, components[0].id), style: "display:inline-block; margin-top:8px; font-size:14px" }, "See this path →")));
+          who("Fits your interest in {interests}.", "Fits {name}'s interest in {interests}.", "Fits their interest in {interests}.", { interests: joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k])) })) : null,
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, T("After getting out: ")), civilianCareers(j).join(", ")),
+        el("a", { href: branchLink(x.id, tracks[0].id, components[0].id), style: "display:inline-block; margin-top:8px; font-size:14px" }, T("See this path →"))));
   });
 
   // Every other branch within 10 points of the top is shown as a close match;
@@ -323,113 +333,120 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
   const otherCards = others.map((x) => {
     const b = BRANCHES[x.id];
     const reasons = fits(user, x.id).slice(0, 2);
-    return el("div", { class: "runner-up", style: `border-left:4px solid ${b.color}` },
+    return el("div", { class: "runner-up", style: `--hero:${b.color}` },
       el("strong", {}, `${b.name} (${x.pct}%)`),
       el("p", { class: "muted", style: "margin:6px 0 0" }, b.tagline),
       reasons.length ? el("p", { style: "margin:8px 0 0; font-size:14px" },
-        `Shares ${your} lean toward ${reasons.join(" and ")}.`) : null,
+        who("Shares your lean toward {traits}.", "Shares {name}'s lean toward {traits}.", "Shares their lean toward {traits}.", { traits: joinWords(reasons) })) : null,
       el("p", { style: "margin:8px 0 0; font-size:14px" },
-        "Top role: ", el("strong", {}, r.topJob(x.id)[0].n)));
+        T("Top role: "), el("strong", {}, r.topJob(x.id)[0].n)));
   });
 
   // "Why not ___?": every branch row opens to show what fits and what doesn't.
   const branchRows = ranked.map((x) => {
     const b = BRANCHES[x.id];
     const good = fits(user, x.id).slice(0, 3);
-    const bad = clashes(user, x.id).slice(0, 3);
+    const bad = clashes(user, x.id, subject).slice(0, 3);
     return el("details", { class: "why-row" },
       el("summary", {}, bar(b.name, x.pct, b.color)),
       el("div", { class: "why-body" },
         good.length
           ? el("ul", { class: "list good" }, good.map((g) => el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, capitalize(g)))))
-          : el("p", { class: "muted", style: "margin:0" }, `Not much in common with ${your} strongest leanings.`),
+          : el("p", { class: "muted", style: "margin:0" }, who("Not much in common with your strongest leanings.", "Not much in common with {name}'s strongest leanings.", "Not much in common with their strongest leanings.")),
         bad.length
-          ? el("ul", { class: "list warn", style: "margin-top:8px" }, bad.map((g) => el("li", {}, el("span", { class: "mark" }, "!"), el("span", {}, mine ? g : g.replace(", but you leaned", `, but ${you} leaned`)))))
+          ? el("ul", { class: "list warn", style: "margin-top:8px" }, bad.map((g) => el("li", {}, el("span", { class: "mark" }, "!"), el("span", {}, g))))
           : null,
-        el("a", { href: branchLink(x.id, tracks[0].id, components[0].id), style: "font-size:14px" }, `Explore the ${b.name} →`)));
+        el("a", { href: branchLink(x.id, tracks[0].id, components[0].id), style: "font-size:14px" }, T("Explore the {branch} →", { branch: b.name }))));
   });
 
   return el("div", { class: "card results fade-in" },
-    el("div", { class: "eyebrow" }, isTie ? "It's a tie!" : mine ? "Your best match" : `${name ? name + "'s" : "Their"} best match`),
+    el("div", { class: "eyebrow" }, isTie ? T("It's a tie!") : who("Your best match", "{name}'s best match", "Their best match")),
     el("div", { class: "result-hero", style: `--hero:${info.color}` },
       el("h1", {}, names),
-      el("div", { class: "pct" }, isTie ? `${top.pct}% MATCH EACH` : `${top.pct}% MATCH`),
+      el("div", { class: "pct" }, isTie ? T("{pct}% MATCH EACH", { pct: top.pct }) : T("{pct}% MATCH", { pct: top.pct })),
       isTie
-        ? el("p", { style: "margin-top:12px" }, "These branches fit equally well, so both are worth a serious look.")
+        ? el("p", { style: "margin-top:12px" }, T("These branches fit equally well, so both are worth a serious look."))
         : el("p", { style: "margin-top:12px" }, info.tagline),
-      el("p", { style: "margin:0" }, isTie ? "Best ways to serve: " : "Best way to serve: ",
-        el("strong", {}, options.map((o) => `${o.title}, ${track.name}`).join(" or ")))),
+      el("p", { style: "margin:0" }, isTie ? T("Best ways to serve: ") : T("Best way to serve: "),
+        el("strong", {}, joinOr(options.map((o) => `${o.title}, ${track.name}`))))),
     quick ? el("div", { class: "note", style: "margin-bottom:14px" }, qs.some((q) => q.bingo)
-      ? "Bingo mode result: a fun, fast estimate. Take the full quiz for a sharper one."
-      : "Quick mode result: fewer questions means a rougher estimate. Take the full quiz for a sharper one.") : null,
+      ? T("Bingo mode result: a fun, fast estimate. Take the full quiz for a sharper one.")
+      : T("Quick mode result: fewer questions means a rougher estimate. Take the full quiz for a sharper one.")) : null,
     tied.map((x) => el("p", {}, isTie ? el("strong", {}, BRANCHES[x.id].name + ": ") : null, BRANCHES[x.id].about)),
 
-    el("div", { class: "section-title" }, mine ? "Top roles for you" : "Top roles"),
+    el("div", { class: "section-title" }, mine ? T("Top roles for you") : T("Top roles")),
     el("div", { class: "jobs" }, jobCards),
     jobNotes.map((n) => el("div", { class: "note", style: "margin-top:12px" }, n)),
     el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
-      "Job names are simplified. Every branch has many more jobs, and which ones you can get depends on test scores, physical standards and openings. Civilian careers are common paths, and some need extra licenses or school."),
+      T("Job names are simplified. Every branch has many more jobs, and which ones you can get depends on test scores, physical standards and openings. Civilian careers are common paths, and some need extra licenses or school.")),
 
     strongest.length ? [
-      el("div", { class: "section-title" }, mine ? "Your profile" : "Profile"),
+      el("div", { class: "section-title" }, mine ? T("Your profile") : T("Profile")),
       el("div", { class: "chips" }, strongest.map(([t, u]) => el("span", { class: "chip" }, capitalize(phrase(t, u.value))))),
     ] : null,
 
-    el("div", { class: "section-title" }, "Trait map"),
+    el("div", { class: "section-title" }, T("Trait map")),
     radarSection(user, top.id),
 
-    qs.some((q) => q.bingo) ? [el("div", { class: "section-title" }, mine ? "Your bingo card" : "Bingo card"), bingoResultCard(qs, answers)] : null,
+    qs.some((q) => q.bingo) ? [el("div", { class: "section-title" }, mine ? T("Your bingo card") : T("Bingo card")), bingoResultCard(qs, answers)] : null,
 
     why.length ? [
-      el("div", { class: "section-title" }, mine ? "Why you matched" : "Why it matched"),
+      el("div", { class: "section-title" }, mine ? T("Why you matched") : T("Why it matched")),
       el("ul", { class: "list good" }, why.map((w) =>
         el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, w)))),
     ] : null,
 
     headsUp.length ? [
-      el("div", { class: "section-title" }, "Heads up"),
+      el("div", { class: "section-title" }, T("Heads up")),
       el("ul", { class: "list warn" }, headsUp.map((h) =>
         el("li", {}, el("span", { class: "mark" }, "!"), el("span", {}, h)))),
     ] : null,
 
-    el("div", { class: "section-title" }, "All branches"),
-    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Tap a branch to see why it ranked where it did."),
+    el("div", { class: "section-title" }, T("All branches")),
+    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, T("Tap a branch to see why it ranked where it did.")),
     el("div", { class: "bars" }, branchRows),
 
-    el("div", { class: "section-title" }, closeOnes.length ? "Also a close match" : "Runner-up"),
+    el("div", { class: "section-title" }, closeOnes.length ? T("Also a close match") : T("Runner-up")),
     closeOnes.length ? el("p", { class: "muted", style: "font-size:14px" },
-      `${closeOnes.length === 1 ? "This branch is" : "These branches are"} within 10 points of the top match, so ${closeOnes.length === 1 ? "it's" : "they're"} worth a look too.`) : null,
+      closeOnes.length === 1
+        ? T("This branch is within 10 points of the top match, so it's worth a look too.")
+        : T("These branches are within 10 points of the top match, so they're worth a look too.")) : null,
     el("div", { style: "display:grid; gap:10px" }, otherCards),
 
-    el("div", { class: "section-title" }, "Service type"),
+    el("div", { class: "section-title" }, T("Service type")),
     el("div", { class: "bars" }, components.map((x) => bar(COMPONENTS[x.id].name, x.pct, "var(--accent)"))),
     el("p", { style: "margin:14px 0 0" }, el("strong", {}, COMPONENTS[components[0].id].name + ": "), COMPONENTS[components[0].id].about),
     options.filter((o) => o.note).map((o) => el("div", { class: "note", style: "margin-top:12px" }, o.note)),
 
-    el("div", { class: "section-title" }, "Enlisted or officer"),
+    el("div", { class: "section-title" }, T("Enlisted or officer")),
     el("div", { class: "bars" }, tracks.map((x) => bar(TRACKS[x.id].name, x.pct, "var(--accent)"))),
     el("p", { style: "margin:14px 0 0" }, el("strong", {}, track.name + ": "), track.about),
     r.hasDegree && tracks[0].id === "enlisted"
-      ? el("div", { class: "note", style: "margin-top:12px" }, `${mine ? "You said you already have" : "They already have"} a degree. The answers lean enlisted, but with a degree there's also the option to become an officer through officer candidate or training school, so ask a recruiter about both.`)
+      ? el("div", { class: "note", style: "margin-top:12px" }, mine
+        ? T("You said you already have a degree. The answers lean enlisted, but with a degree there's also the option to become an officer through officer candidate or training school, so ask a recruiter about both.")
+        : T("They already have a degree. The answers lean enlisted, but with a degree there's also the option to become an officer through officer candidate or training school, so ask a recruiter about both."))
       : null,
     el("p", { class: "muted", style: "margin:8px 0 0; font-size:14px" },
-      "Not set in stone: enlisted members can become officers later through commissioning programs, and NCOs lead plenty of people too."),
+      T("Not set in stone: enlisted members can become officers later through commissioning programs, and NCOs lead plenty of people too.")),
 
-    el("div", { class: "section-title" }, "Questions to ask a recruiter"),
+    el("div", { class: "section-title" }, T("Questions to ask a recruiter")),
     el("ol", { class: "steps compact" }, recruiterQuestions(r).map((q) => el("li", {}, q))),
-    el("p", { class: "muted", style: "font-size:13px" }, "Talk to recruiters from more than one branch, and get anything they promise in writing."),
+    el("p", { class: "muted", style: "font-size:13px" }, T("Talk to recruiters from more than one branch, and get anything they promise in writing.")),
+    el("div", { class: "actions", style: "margin-top:4px" }, tied.map((x) => el("a", {
+      class: "button", href: recruiterLink(x.id, components[0].id), target: "_blank", rel: "noopener",
+    }, T("Find a {branch} recruiter ↗", { branch: serviceOption(x.id, components[0].id).title })))),
 
     mine ? shareSection(r) : null,
 
     el("div", { class: "actions" },
       mine
-        ? [el("button", { class: "primary", onclick: () => { newQuiz("full"); startQuiz("full"); } }, "Take it again"),
-           el("button", { onclick: () => { newQuiz("quick"); startQuiz("quick"); } }, "Quick mode (15 questions)"),
-           el("button", { onclick: () => { newQuiz("bingo"); startQuiz("bingo"); } }, "Bingo mode 🎯"),
-           el("button", { onclick: (e) => copyResult(e, r) }, "Copy my result"),
-           el("button", { onclick: () => window.print() }, "Print / save as PDF")]
-        : el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz yourself"),
-      el("a", { class: "button", href: branchLink(top.id, tracks[0].id, components[0].id) }, `Explore the ${info.name}`)),
+        ? [el("button", { class: "primary", onclick: () => { newQuiz("full"); startQuiz("full"); } }, T("Take it again")),
+           el("button", { onclick: () => { newQuiz("quick"); startQuiz("quick"); } }, T("Quick mode (15 questions)")),
+           el("button", { onclick: () => { newQuiz("bingo"); startQuiz("bingo"); } }, T("Bingo mode 🎯")),
+           el("button", { onclick: (e) => copyResult(e, r) }, T("Copy my result")),
+           el("button", { onclick: () => window.print() }, T("Print / save as PDF"))]
+        : el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz yourself")),
+      el("a", { class: "button", href: branchLink(top.id, tracks[0].id, components[0].id) }, T("Explore the {branch}", { branch: info.name }))),
   );
 }
 
@@ -452,7 +469,7 @@ function radarSection(user, initial) {
     el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name)));
   draw(initial);
   return el("div", {},
-    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Green is you. Pick a branch to lay its profile over yours. The farther out, the stronger the lean. Untested traits sit in the middle."),
+    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, T("Green is you. Pick a branch to lay its profile over yours. The farther out, the stronger the lean. Untested traits sit in the middle.")),
     holder, chips);
 }
 
@@ -463,7 +480,7 @@ function radarSvg(user, branch) {
   svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
   svg.setAttribute("class", "radar");
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", `Your traits compared with the ${BRANCHES[branch].name}`);
+  svg.setAttribute("aria-label", T("Your traits compared with the {branch}", { branch: BRANCHES[branch].name }));
   const add = (tag, attrs, text) => {
     const n = document.createElementNS(ns, tag);
     for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
@@ -483,7 +500,7 @@ function radarSvg(user, branch) {
     const [x, y] = point(i, 2);
     add("line", { x1: c, y1: c, x2: x, y2: y, class: "radar-axis" });
     const [lx, ly] = point(i, 2.75);
-    add("text", { x: lx, y: ly, class: "radar-label", "text-anchor": Math.abs(lx - c) < 8 ? "middle" : lx > c ? "start" : "end", "dominant-baseline": "middle" }, TRAIT_SHORT[t]);
+    add("text", { x: lx, y: ly, class: "radar-label", "text-anchor": Math.abs(lx - c) < 8 ? "middle" : lx > c ? "start" : "end", "dominant-baseline": "middle" }, T(TRAIT_SHORT[t]));
   });
   const shape = (values, cls, color) => add("polygon", {
     points: TRAIT_IDS.map((t, i) => point(i, values[t]).join(",")).join(" "),
@@ -516,7 +533,7 @@ function shareSection(r) {
   const code = encodeAnswers(r.qs, r.answers);
   let name = "";
   try { name = localStorage.getItem("rankedbingo.name") || ""; } catch { /* ignore */ }
-  const nameInput = el("input", { class: "text-input", type: "text", maxlength: "20", placeholder: "Your name (optional)", value: name, "aria-label": "Your name (optional)" });
+  const nameInput = el("input", { class: "text-input", type: "text", maxlength: "20", placeholder: T("Your name (optional)"), value: name, "aria-label": T("Your name (optional)") });
   const status = el("span", { class: "muted", style: "font-size:14px" });
   const getName = () => {
     const n = cleanName(nameInput.value);
@@ -525,17 +542,17 @@ function shareSection(r) {
   };
   const flash = (msg) => { status.textContent = msg; setTimeout(() => { status.textContent = ""; }, 2500); };
 
-  const friendInput = el("input", { class: "text-input", type: "text", placeholder: "Paste a friend's result link", "aria-label": "Friend's result link" });
+  const friendInput = el("input", { class: "text-input", type: "text", placeholder: T("Paste a friend's result link"), "aria-label": T("Friend's result link") });
   const compare = () => {
     const m = friendInput.value.match(/#\/r\/([0-9a-z-]+)(?:\?n=([^&\s]*))?/i);
-    if (!m || !decodeAnswers(m[1])) { flash("That doesn't look like a Ranked Bingo result link."); return; }
+    if (!m || !decodeAnswers(m[1])) { flash(T("That doesn't look like a Ranked Bingo result link.")); return; }
     const me = getName();
-    location.hash = `#/compare/${code}/${m[1]}?a=${encodeURIComponent(me || "You")}&b=${encodeURIComponent(m[2] ? decodeURIComponent(m[2]) : "Friend")}`;
+    location.hash = `#/compare/${code}/${m[1]}?a=${encodeURIComponent(me || "You")}&b=${encodeURIComponent(m[2] ? decodeURIComponent(m[2]) : T("Friend"))}`;
   };
 
   // Live preview of the share card, in long (story) or square format.
   let format = "long";
-  const preview = el("img", { class: "card-preview long", alt: "Your share card" });
+  const preview = el("img", { class: "card-preview long", alt: T("Your share card") });
   const formatButtons = el("div", { class: "seg" });
   let refreshTimer = 0;
   const refresh = () => {
@@ -548,14 +565,14 @@ function shareSection(r) {
     }, 150);
     formatButtons.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.f === format));
   };
-  for (const [f, label] of [["long", "Long"], ["wide", "Wide"], ["square", "Square"]]) {
+  for (const [f, label] of [["long", T("Long")], ["wide", T("Wide")], ["square", T("Square")]]) {
     formatButtons.append(el("button", { class: "seg-item", "data-f": f, onclick: () => { format = f; refresh(); } }, label));
   }
   nameInput.addEventListener("input", refresh);
   refresh();
 
   return el("div", { class: "share-box" },
-    el("div", { class: "section-title", style: "margin-top:0" }, "Share your result"),
+    el("div", { class: "section-title", style: "margin-top:0" }, T("Share your result")),
     nameInput,
     el("div", { class: "card-preview-wrap" }, preview),
     el("div", { class: "seg-row", style: "justify-items:center; margin-top:10px" }, formatButtons),
@@ -564,69 +581,67 @@ function shareSection(r) {
         const link = shareLink(code, getName());
         award("recruiter");
         if (CAN_SHARE) {
-          try { await navigator.share({ title: "My Ranked Bingo result", url: link }); return; } catch { /* fall back to copying */ }
+          try { await navigator.share({ title: T("My Ranked Bingo result"), url: link }); return; } catch { /* fall back to copying */ }
         }
-        try { await navigator.clipboard.writeText(link); flash("Link copied!"); } catch { prompt("Copy this link:", link); }
-      } }, "Share link"),
-      el("button", { onclick: () => shareImage(r, getName(), format, false) }, "Download image"),
-      CAN_SHARE && navigator.canShare ? el("button", { onclick: () => shareImage(r, getName(), format, true) }, "Share image") : null,
+        try { await navigator.clipboard.writeText(link); flash(T("Link copied!")); } catch { prompt(T("Copy this link:"), link); }
+      } }, T("Share link")),
+      el("button", { onclick: () => shareImage(r, getName(), format, false) }, T("Download image")),
+      CAN_SHARE && navigator.canShare ? el("button", { onclick: () => shareImage(r, getName(), format, true) }, T("Share image")) : null,
       status),
-    el("div", { class: "section-title" }, "Compare with a friend"),
-    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Send them your link. When they finish, paste their link here."),
-    el("div", { class: "row" }, friendInput, el("button", { onclick: compare }, "Compare")));
+    el("div", { class: "section-title" }, T("Compare with a friend")),
+    el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, T("Send them your link. When they finish, paste their link here.")),
+    el("div", { class: "row" }, friendInput, el("button", { onclick: compare }, T("Compare"))));
 }
 
 async function copyResult(e, r) {
-  const picks = r.tied.map((x) => `${serviceOption(x.id, r.components[0].id).title}, ${r.track.name} (top role: ${r.topJob(x.id)[0].n})`);
-  const header = r.tied.length > 1 ? ["My Ranked Bingo result: a tie!", ...picks] : [`My Ranked Bingo result: ${picks[0]}`];
+  const picks = r.tied.map((x) => T("{option}, {track} (top role: {role})", { option: serviceOption(x.id, r.components[0].id).title, track: r.track.name, role: r.topJob(x.id)[0].n }));
+  const header = r.tied.length > 1 ? [T("My Ranked Bingo result: a tie!"), ...picks] : [T("My Ranked Bingo result: {pick}", { pick: picks[0] })];
   const text = [...header, ...r.ranked.map((x) => `${BRANCHES[x.id].name}: ${x.pct}%`), shareLink(encodeAnswers(r.qs, r.answers))].join("\n");
   const btn = e.currentTarget;
   try {
     await navigator.clipboard.writeText(text);
-    btn.textContent = "Copied!";
+    btn.textContent = T("Copied!");
   } catch {
-    btn.textContent = "Couldn't copy";
+    btn.textContent = T("Couldn't copy");
   }
-  setTimeout(() => { btn.textContent = "Copy my result"; }, 1500);
+  setTimeout(() => { btn.textContent = T("Copy my result"); }, 1500);
 }
 
 function renderShared() {
   const data = decodeAnswers(route.code);
   if (!data) {
     app.append(el("div", { class: "card fade-in" },
-      el("div", { class: "eyebrow" }, "Shared result"),
-      el("h1", {}, "That link doesn't work"),
-      el("p", { class: "muted" }, "The result link is broken or incomplete. Ask your friend to send it again, or take the quiz yourself."),
-      el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz")));
+      el("div", { class: "eyebrow" }, T("Shared result")),
+      el("h1", {}, T("That link doesn't work")),
+      el("p", { class: "muted" }, T("The result link is broken or incomplete. Ask your friend to send it again, or take the quiz yourself.")),
+      el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz"))));
     return;
   }
   const name = cleanName(route.name);
   const mine = myResultCode();
   app.append(
     el("div", { class: "note", style: "margin-bottom:14px" },
-      `You're looking at ${name ? name + "'s" : "someone's"} result. `,
+      name ? T("You're looking at {name}'s result. ", { name }) : T("You're looking at someone's result. "),
       mine && mine !== route.code
-        ? el("a", { href: `#/compare/${mine}/${route.code}?a=You&b=${encodeURIComponent(name || "Friend")}` }, "Compare it with yours →")
-        : el("a", { href: "#/quiz" }, "Take the quiz to compare →")),
+        ? el("a", { href: `#/compare/${mine}/${route.code}?a=You&b=${encodeURIComponent(name || T("Friend"))}` }, T("Compare it with yours →"))
+        : el("a", { href: "#/quiz" }, T("Take the quiz to compare →"))),
     resultView({ qs: data.qs, answers: data.answers, name: name || null }),
   );
-}
-
-// "You match" but "Sam matches".
-function verb(subject, base) {
-  return subject === "You" ? base : base + (base.endsWith("h") ? "es" : "s");
 }
 
 function renderCompare() {
   const a = decodeAnswers(route.code), b = decodeAnswers(route.code2);
   if (!a || !b) {
-    app.append(el("div", { class: "card fade-in" }, el("h1", {}, "Can't compare these"), el("p", { class: "muted" }, "One of the result links is broken."), el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz")));
+    app.append(el("div", { class: "card fade-in" }, el("h1", {}, T("Can't compare these")), el("p", { class: "muted" }, T("One of the result links is broken.")), el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz"))));
     return;
   }
-  const names = [cleanName(route.nameA) || "Player 1", cleanName(route.nameB) || "Player 2"];
+  // "You" is stored in links as is; show it in the reader's language.
+  const shown = (n, fallback) => { const c = cleanName(n); return !c ? fallback : c === "You" ? T("You") : c; };
+  const names = [shown(route.nameA, T("Player 1")), shown(route.nameB, T("Player 2"))];
+  const isYou = (n) => n === T("You");
   const ra = computeResult(a.qs, a.answers), rb = computeResult(b.qs, b.answers);
   award("squad");
-  setBackground(ra.top.id === rb.top.id ? ra.top.id : null);
+  setBackground(ra.top.id === rb.top.id ? ra.top.id : null, route.code);
   const sameTop = ra.top.id === rb.top.id;
 
   // Traits both lean the same way on, and the biggest difference.
@@ -639,35 +654,37 @@ function renderCompare() {
   const side = (r, n, code) => el("div", { class: "job", style: `--hero:${BRANCHES[r.top.id].color}` },
     el("div", { class: "job-path" }, n),
     el("strong", { class: "job-name", style: "font-size:24px" }, joinWords(r.tied.map((x) => BRANCHES[x.id].name))),
-    el("div", { class: "pct", style: `color:${BRANCHES[r.top.id].color}; font:700 14px var(--mono); margin-top:4px` }, `${r.top.pct}% MATCH`),
-    el("p", { style: "margin:8px 0 0; font-size:14px" }, r.options.map((o) => `${o.title}, ${r.track.name}`).join(" or ")),
-    el("p", { style: "margin:6px 0 0; font-size:14px" }, "Top role: ", el("strong", {}, r.topJob(r.top.id)[0].n)),
-    el("a", { href: `#/r/${code}?n=${encodeURIComponent(n)}`, style: "font-size:14px; display:inline-block; margin-top:8px" }, "Full result →"));
+    el("div", { class: "pct", style: `color:${BRANCHES[r.top.id].color}; font:700 14px var(--mono); margin-top:4px` }, T("{pct}% MATCH", { pct: r.top.pct })),
+    el("p", { style: "margin:8px 0 0; font-size:14px" }, joinOr(r.options.map((o) => `${o.title}, ${r.track.name}`))),
+    el("p", { style: "margin:6px 0 0; font-size:14px" }, T("Top role: "), el("strong", {}, r.topJob(r.top.id)[0].n)),
+    el("a", { href: `#/r/${code}?n=${encodeURIComponent(n)}`, style: "font-size:14px; display:inline-block; margin-top:8px" }, T("Full result →")));
 
   app.append(el("div", { class: "card results fade-in" },
-    el("div", { class: "eyebrow" }, "Compare"),
-    el("h1", {}, `${names[0]} vs ${names[1]}`),
+    el("div", { class: "eyebrow" }, T("Compare")),
+    el("h1", {}, T("{a} vs {b}", { a: names[0], b: names[1] })),
     el("p", { style: "font-size:18px" }, sameTop
-      ? `Same top branch: you're both ${BRANCHES[ra.top.id].name} material. 🤝`
-      : `${names[0]} ${verb(names[0], "match")} the ${BRANCHES[ra.top.id].name}, and ${names[1]} ${verb(names[1], "match")} the ${BRANCHES[rb.top.id].name}.`),
+      ? T("Same top branch: you're both {branch} material. 🤝", { branch: BRANCHES[ra.top.id].name })
+      : T(isYou(names[0]) ? "You match the {branchA}, and {b} matches the {branchB}." : "{a} matches the {branchA}, and {b} matches the {branchB}.",
+        { a: names[0], b: names[1], branchA: BRANCHES[ra.top.id].name, branchB: BRANCHES[rb.top.id].name })),
     el("div", { class: "two-col compare" }, side(ra, names[0], route.code), side(rb, names[1], route.code2)),
-    el("div", { class: "section-title" }, "All branches"),
+    el("div", { class: "section-title" }, T("All branches")),
     el("div", { class: "table-wrap" }, el("table", {},
-      el("thead", {}, el("tr", {}, el("th", {}, "Branch"), el("th", {}, names[0]), el("th", {}, names[1]))),
+      el("thead", {}, el("tr", {}, el("th", {}, T("Branch")), el("th", {}, names[0]), el("th", {}, names[1]))),
       el("tbody", {}, ORDER.map((id) => {
         const pa = ra.ranked.find((x) => x.id === id).pct, pb = rb.ranked.find((x) => x.id === id).pct;
         return el("tr", {}, el("td", {}, BRANCHES[id].name),
           el("td", { class: pa >= pb ? "win" : "" }, pa + "%"), el("td", { class: pb >= pa ? "win" : "" }, pb + "%"));
       })))),
     both.length ? [
-      el("div", { class: "section-title" }, "You both lean toward"),
+      el("div", { class: "section-title" }, T("You both lean toward")),
       el("div", { class: "chips" }, both.map((t) => el("span", { class: "chip" }, capitalize(phrase(t, ra.user[t].value))))),
     ] : null,
     biggest ? [
-      el("div", { class: "section-title" }, "Biggest difference"),
-      el("p", {}, `${names[0]} ${verb(names[0], "lean")} toward ${phrase(biggest.t, ra.user[biggest.t].value)}, while ${names[1]} ${verb(names[1], "lean")} toward ${phrase(biggest.t, rb.user[biggest.t].value)}.`),
+      el("div", { class: "section-title" }, T("Biggest difference")),
+      el("p", {}, T(isYou(names[0]) ? "You lean toward {leanA}, while {b} leans toward {leanB}." : "{a} leans toward {leanA}, while {b} leans toward {leanB}.",
+        { a: names[0], b: names[1], leanA: phrase(biggest.t, ra.user[biggest.t].value), leanB: phrase(biggest.t, rb.user[biggest.t].value) })),
     ] : null,
-    el("div", { class: "actions" }, el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz")),
+    el("div", { class: "actions" }, el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz"))),
   ));
 }
 
@@ -712,12 +729,13 @@ async function renderCard(r, name, format, withPhoto) {
   ctx.fillStyle = "#0b0f0c";
   ctx.fillRect(0, 0, W, H);
 
-  if (withPhoto && BG_IMAGES[r.top.id]) {
+  const photo = photoFor(r.top.id, encodeAnswers(r.qs, r.answers));
+  if (withPhoto && photo) {
     const img = new Image();
-    img.src = BG_IMAGES[r.top.id];
+    img.src = photo.src;
     await img.decode();
     // Cover the card, centered on the photo's focus point.
-    const [fx, fy] = BG_FOCUS[r.top.id];
+    const [fx, fy] = photo.focus;
     const scale = Math.max(W / img.width, H / img.height);
     const w = img.width * scale, h = img.height * scale;
     const anchorX = format === "wide" ? W * 0.68 : W / 2;
@@ -755,10 +773,10 @@ async function renderCard(r, name, format, withPhoto) {
   ctx.fillStyle = info.color;
   ctx.font = font(format === "long" ? 32 : 28, 700, true);
   ctx.textBaseline = "middle";
-  ctx.fillText(`${name ? name.toUpperCase() + " · " : ""}${r.top.pct}% MATCH${r.tied.length > 1 ? " EACH" : ""}`, PAD + 176, lineY + 8);
+  ctx.fillText(`${name ? name.toUpperCase() + " · " : ""}${r.tied.length > 1 ? T("{pct}% MATCH EACH", { pct: r.top.pct }) : T("{pct}% MATCH", { pct: r.top.pct })}`, PAD + 176, lineY + 8);
 
   const reasons = [...new Set(r.tied.flatMap((x) => fits(r.user, x.id)))].slice(0, 4).map(capitalize);
-  reasons.push(`Top role: ${r.topJob(r.top.id)[0].n}`);
+  reasons.push(T("Top role: {role}", { role: r.topJob(r.top.id)[0].n }));
 
   const graph = (x0, y0, width, rowH, nameSize) => {
     ctx.textBaseline = "middle";
@@ -781,7 +799,7 @@ async function renderCard(r, name, format, withPhoto) {
     ctx.fillStyle = "#8d9a8a";
     ctx.font = font(textSize - 5, 700, true);
     ctx.textBaseline = "alphabetic";
-    ctx.fillText("WHY", x0, y0);
+    ctx.fillText(T("WHY"), x0, y0);
     let y = y0 + lineH + 8;
     ctx.font = font(textSize, 600);
     for (const reason of reasons) {
@@ -811,7 +829,7 @@ async function renderCard(r, name, format, withPhoto) {
   ctx.fillStyle = info.color;
   ctx.font = font(format === "long" ? 24 : 20, 600);
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(`© Ranked Bingo, ${new Date().getFullYear()}. All rights reserved.`, PAD, H - 48);
+  ctx.fillText(T("© Ranked Bingo, {year}. All rights reserved.", { year: new Date().getFullYear() }), PAD, H - 48);
   ctx.fillStyle = "rgba(227,234,223,0.75)";
   ctx.textAlign = "right";
   ctx.fillText(siteUrl().replace(/^https?:\/\//, "").replace(/\/$/, ""), W - PAD, H - 48);
@@ -838,7 +856,7 @@ async function shareImage(r, name, format, useShareSheet) {
   award("recruiter");
   const file = new File([blob], `ranked-bingo-${format}.png`, { type: "image/png" });
   if (useShareSheet && CAN_SHARE && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: "My Ranked Bingo result" }); return; } catch { /* fall back to download */ }
+    try { await navigator.share({ files: [file], title: T("My Ranked Bingo result") }); return; } catch { /* fall back to download */ }
   }
   const a = el("a", { href: URL.createObjectURL(blob), download: `ranked-bingo-${format}.png` });
   document.body.append(a);
@@ -869,14 +887,14 @@ document.addEventListener("keydown", (e) => {
 // ---------------------------------------------------------------------------
 // Explorer: branch pages, service types and training.
 
-function setBackground(branch) {
+function setBackground(branch, seed) {
   const bg = document.getElementById("bg");
-  const src = branch && BG_IMAGES[branch];
-  if (src) {
-    bg.style.backgroundImage = `url("${src}")`;
-    bg.style.backgroundPosition = BG_FOCUS[branch].map((v) => `${v * 100}%`).join(" ");
+  const photo = branch && photoFor(branch, seed);
+  if (photo) {
+    bg.style.backgroundImage = `url("${photo.src}")`;
+    bg.style.backgroundPosition = photo.focus.map((v) => `${v * 100}%`).join(" ");
   }
-  bg.classList.toggle("on", Boolean(src));
+  bg.classList.toggle("on", Boolean(photo));
 }
 
 const route = { page: "quiz", branch: null, track: "enlisted", type: "active", code: null, code2: null, name: null, nameA: null, nameB: null };
@@ -914,21 +932,23 @@ function branchLink(branch, track = "enlisted", type = "active") {
 
 function renderNav() {
   const nav = document.getElementById("nav");
-  const tabs = [["quiz", "Quiz"], ["branches", "Branches"], ["types", "Service"], ["training", "Training"], ["pay", "Pay"], ["join", "Join"], ["fun", "Fun"]];
+  const tabs = [["quiz", T("Quiz")], ["branches", T("Branches")], ["types", T("Service")], ["training", T("Training")], ["pay", T("Pay")], ["join", T("Join")], ["fun", T("Fun")]];
   const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page;
   const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
   nav.replaceChildren(
     el("div", { class: "nav-top" },
-      el("a", { class: "brand", href: "#/quiz" }, "Ranked Bingo"),
+      el("a", { class: "brand", href: "#/quiz" }, T("Ranked Bingo")),
     el("button", {
-      class: "theme-toggle", "aria-label": theme === "light" ? "Switch to dark mode" : "Switch to light mode",
+      class: "theme-toggle", "aria-label": theme === "light" ? T("Switch to dark mode") : T("Switch to light mode"),
       onclick: () => {
         const nextTheme = theme === "light" ? "dark" : "light";
         document.documentElement.dataset.theme = nextTheme;
         try { localStorage.setItem("rankedbingo.theme", nextTheme); } catch { /* not saved */ }
         renderNav();
       },
-    }, theme === "light" ? "🌙" : "☀️")),
+    }, theme === "light" ? "🌙" : "☀️"),
+      el("select", { class: "lang-select", "aria-label": T("Language"), onchange: (e) => setLanguage(e.target.value) },
+        LANGUAGES.map(([code, label]) => el("option", { value: code, selected: code === LANG }, label)))),
     el("div", { class: "tabs" }, tabs.map(([id, label]) =>
       el("a", { class: "tab" + (current === id ? " active" : ""), href: `#/${id}`, "aria-current": current === id ? "page" : null }, label))),
   );
@@ -936,13 +956,13 @@ function renderNav() {
 
 function renderBranches() {
   app.append(el("div", { class: "fade-in" },
-    el("div", { class: "eyebrow" }, "Explore"),
-    el("h1", {}, "The six branches"),
-    el("p", { class: "muted" }, "Pick a branch to see what it does, what life is like, the jobs it offers, and how boot camp and job training work."),
+    el("div", { class: "eyebrow" }, T("Explore")),
+    el("h1", {}, T("The six branches")),
+    el("p", { class: "muted" }, T("Pick a branch to see what it does, what life is like, the jobs it offers, and how boot camp and job training work.")),
     el("div", { class: "grid" }, ORDER.map((b) => {
       const info = BRANCHES[b], d = DETAILS[b];
       return el("a", { class: "branch-card", href: branchLink(b), style: `--hero:${info.color}` },
-        el("div", { class: "job-path" }, `${d.members} · since ${d.founded.split(" ")[0]}`),
+        el("div", { class: "job-path" }, T("{members} · since {year}", { members: d.members, year: d.founded.match(/\d{4}/)[0] })),
         el("strong", { class: "job-name" }, info.name),
         el("p", { class: "muted", style: "margin:6px 0 0" }, info.tagline));
     })),
@@ -971,84 +991,85 @@ function renderBranch() {
 
   const steps = track === "enlisted"
     ? [
-        ["Talk to a recruiter", "Ask questions, see which jobs are open, and start your paperwork."],
-        ["MEPS", "At the Military Entrance Processing Station you get a medical exam, pick your job and swear in. You take the ASVAB test there or beforehand at a testing site."],
-        [d.bootcamp.name, `${d.bootcamp.length} at ${d.bootcamp.where}.`],
+        [T("Talk to a recruiter"), T("Ask questions, see which jobs are open, and start your paperwork.")],
+        ["MEPS", T("At the Military Entrance Processing Station you get a medical exam, pick your job and swear in. You take the ASVAB test there or beforehand at a testing site.")],
+        [d.bootcamp.name, T("{length} at {where}.", { length: d.bootcamp.length, where: d.bootcamp.where })],
         [d.tech.name, d.tech.text],
-        [type === "active" ? "First duty station" : "Your home unit", type === "active" ? "You report to your first unit and start the job for real." : "You go home, return to work or school, and start drilling with your unit."],
+        [type === "active" ? T("First duty station") : T("Your home unit"), type === "active" ? T("You report to your first unit and start the job for real.") : T("You go home, return to work or school, and start drilling with your unit.")],
       ]
     : [
-        ["Earn a commission", d.officer],
-        ["Officer training", "Your commissioning program teaches leadership, tactics and military basics. The format depends on the route: four years at an academy, ROTC classes during college, or a few months at officer candidate or training school."],
-        ["Job training", "New officers go to a course for their field before leading people in it."],
-        [type === "active" ? "First assignment" : "Your home unit", type === "active" ? "You take charge of your first team, section or platoon." : "You lead a part-time unit while keeping your civilian career."],
+        [T("Earn a commission"), d.officer],
+        [T("Officer training"), T("Your commissioning program teaches leadership, tactics and military basics. The format depends on the route: four years at an academy, ROTC classes during college, or a few months at officer candidate or training school.")],
+        [T("Job training"), T("New officers go to a course for their field before leading people in it.")],
+        [type === "active" ? T("First assignment") : T("Your home unit"), type === "active" ? T("You take charge of your first team, section or platoon.") : T("You lead a part-time unit while keeping your civilian career.")],
       ];
 
   app.append(el("div", { class: "fade-in" },
-    el("a", { class: "back-link", href: "#/branches" }, "← All branches"),
+    el("a", { class: "back-link", href: "#/branches" }, T("← All branches")),
     el("div", { class: "result-hero", style: `--hero:${info.color}; margin-top:12px` },
       el("h1", {}, info.name),
       el("div", { class: "pct" }, d.members.toUpperCase()),
       el("p", { style: "margin-top:12px" }, info.tagline)),
 
     el("div", { class: "facts" },
-      [["Founded", d.founded], ["Part of", d.dept], ["Members", d.members], d.motto ? ["Motto", d.motto] : null].filter(Boolean)
+      [[T("Founded"), d.founded], [T("Part of"), d.dept], [T("Members"), d.members], d.motto ? [T("Motto"), d.motto] : null].filter(Boolean)
         .map(([k, v]) => el("div", { class: "fact" }, el("span", { class: "fact-k" }, k), el("span", {}, v)))),
 
-    el("div", { class: "section-title" }, "What it does"),
+    el("div", { class: "section-title" }, T("What it does")),
     el("p", {}, info.about),
-    el("div", { class: "section-title" }, "What life is like"),
+    el("div", { class: "section-title" }, T("What life is like")),
     el("p", {}, d.life),
     el("ul", { class: "list good" }, d.expect.map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x)))),
-    el("div", { class: "section-title" }, "A day in the life"),
+    el("div", { class: "section-title" }, T("A day in the life")),
     el("ol", { class: "timeline", style: `--c:${info.color}` }, d.day.map(([t, x]) => el("li", {}, el("span", { class: "tl-date" }, t), el("span", {}, x)))),
-    el("p", { class: "muted", style: "font-size:13px" }, "A typical active-duty day. It varies a lot by job, unit, and whether you're in the field, at sea or deployed."),
+    el("p", { class: "muted", style: "font-size:13px" }, T("A typical active-duty day. It varies a lot by job, unit, and whether you're in the field, at sea or deployed.")),
     el("div", { class: "two-col" },
-      el("div", {}, el("div", { class: "section-title" }, "Good fit if"),
+      el("div", {}, el("div", { class: "section-title" }, T("Good fit if")),
         el("ul", { class: "list good" }, d.fit.map((x) => el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, x))))),
-      el("div", {}, el("div", { class: "section-title" }, "Maybe not if"),
+      el("div", {}, el("div", { class: "section-title" }, T("Maybe not if")),
         el("ul", { class: "list warn" }, d.notFit.map((x) => el("li", {}, el("span", { class: "mark" }, "!"), el("span", {}, x)))))),
 
     el("div", { class: "card", style: "margin-top:28px" },
-      el("div", { class: "eyebrow" }, "Pick your path"),
-      segmented("Role", TRACK_ORDER.map((t) => [t, TRACKS[t].name]), track, (t) => branchLink(b, t, type)),
-      segmented("Service type", COMPONENT_ORDER.map((c) => [c, COMPONENTS[c].name,
-        c === "guard" && !hasGuard ? `The ${info.name} doesn't have a National Guard` : null]), type, (c) => branchLink(b, track, c)),
+      el("div", { class: "eyebrow" }, T("Pick your path")),
+      segmented(T("Role"), TRACK_ORDER.map((t) => [t, TRACKS[t].name]), track, (t) => branchLink(b, t, type)),
+      segmented(T("Service type"), COMPONENT_ORDER.map((c) => [c, COMPONENTS[c].name,
+        c === "guard" && !hasGuard ? T("The {branch} doesn't have a National Guard", { branch: info.name }) : null]), type, (c) => branchLink(b, track, c)),
       el("h2", { style: "margin-top:18px" }, `${option.title}, ${TRACKS[track].name}`),
       option.note ? el("div", { class: "note", style: "margin-bottom:14px" }, option.note) : null,
-      el("p", {}, el("strong", {}, "Schedule: "), compD.schedule),
+      el("p", {}, el("strong", {}, T("Schedule: ")), compD.schedule),
       el("ul", { class: "list good" }, compD.life
-        .map((x) => (["af", "sf", "army"].includes(b) ? x.replace(", or aboard a ship in sea-going jobs", "") : x))
+        .map((x, i) => (i === 0 && compD.lifeLand && ["af", "sf", "army"].includes(b) ? compD.lifeLand : x))
         .map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x)))),
       el("p", { style: "margin-top:12px" }, el("strong", {}, `${TRACKS[track].name}: `), TRACKS[track].about),
 
-      el("div", { class: "section-title" }, "Your path, step by step"),
+      el("div", { class: "section-title" }, T("Your path, step by step")),
       el("ol", { class: "steps" }, steps.map(([t, x]) => el("li", {}, el("strong", {}, t), el("p", { class: "muted", style: "margin:2px 0 0" }, x)))),
 
-      el("div", { class: "section-title" }, `${TRACKS[track].name} jobs: a preview`),
+      el("div", { class: "section-title" }, T("{track} jobs: a preview", { track: TRACKS[track].name })),
       el("div", { class: "jobs" }, jobs.slice(0, 6).map((j) => el("details", { class: "job", style: `--hero:${info.color}` },
         el("summary", {}, el("strong", { class: "job-name" }, j.n)),
         el("p", { class: "muted", style: "margin:6px 0 0" }, j.d),
-        el("p", { style: "margin:6px 0 0; font-size:14px" }, `Good for people into ${joinWords(Object.keys(j.i).map((k) => INTERESTS[k]))}.`),
-        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "Civilian careers it can lead to: "), civilianCareers(j).join(", ")),
-        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, "Training: "),
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, T("Good for people into {interests}.", { interests: joinWords(Object.keys(j.i).map((k) => INTERESTS[k])) })),
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, T("Civilian careers it can lead to: ")), civilianCareers(j).join(", ")),
+        el("p", { style: "margin:6px 0 0; font-size:14px" }, el("strong", {}, T("Training: ")),
           track === "enlisted"
-            ? `${d.bootcamp.name}, then ${d.tech.name} for this job.`
-            : "Commissioning program, then the officer course for this field.")))),
+            ? T("{bootcamp}, then {school} for this job.", { bootcamp: d.bootcamp.name, school: d.tech.name })
+            : T("Commissioning program, then the officer course for this field."))))),
       FULL_LIST_READY ? [
         el("div", { class: "actions", style: "margin-top:14px" },
-          el("a", { class: "button primary", href: jobsLink(b, track) }, `Show full list of ${info.name} jobs →`)),
+          el("a", { class: "button primary", href: jobsLink(b, track) }, T("Show full list of {branch} jobs →", { branch: info.name }))),
         el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
-          "The preview uses simplified names. The full list has every job with its official code."),
+          T("The preview uses simplified names. The full list has every job with its official code.")),
       ] : el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
-        "These are examples with simplified names. A full list of every job is coming soon."),
+        T("These are examples with simplified names. A full list of every job is coming soon.")),
     ),
 
-    el("div", { class: "section-title" }, "Boot camp"),
+    el("div", { class: "section-title" }, T("Boot camp")),
     trainingCard(b),
     el("div", { class: "actions" },
-      el("a", { class: "button primary", href: "#/quiz" }, "Take the quiz"),
-      el("a", { class: "button", href: "#/training" }, "Compare all boot camps")),
+      el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz")),
+      el("a", { class: "button", href: recruiterLink(b, type), target: "_blank", rel: "noopener" }, T("Find a {branch} recruiter ↗", { branch: option.title })),
+      el("a", { class: "button", href: "#/training" }, T("Compare all boot camps"))),
   ));
 }
 
@@ -1057,34 +1078,34 @@ function trainingCard(b) {
   return el("div", { class: "job", style: `--hero:${info.color}` },
     el("div", { class: "job-path" }, `${info.name} · ${bc.length}`),
     el("strong", { class: "job-name" }, bc.name),
-    el("p", { class: "muted", style: "margin:4px 0 10px" }, `${bc.where}. Instructors: ${bc.leaders}.`),
+    el("p", { class: "muted", style: "margin:4px 0 10px" }, T("{where}. Instructors: {leaders}.", { where: bc.where, leaders: bc.leaders })),
     el("ol", { class: "steps compact" }, bc.phases.map(([t, x]) => el("li", {}, el("strong", {}, t), el("p", { class: "muted", style: "margin:2px 0 0" }, x)))),
-    el("p", { style: "margin:10px 0 0" }, el("strong", {}, `After: ${d.tech.name}. `), d.tech.text),
-    el("p", { style: "margin:8px 0 0" }, el("strong", {}, "Officers: "), d.officer));
+    el("p", { style: "margin:10px 0 0" }, el("strong", {}, T("After: {school}. ", { school: d.tech.name })), d.tech.text),
+    el("p", { style: "margin:8px 0 0" }, el("strong", {}, T("Officers: ")), d.officer));
 }
 
 function renderTypes() {
   app.append(el("div", { class: "fade-in" },
-    el("div", { class: "eyebrow" }, "Explore"),
-    el("h1", {}, "Ways to serve"),
-    el("p", { class: "muted" }, "Every branch has full-time and part-time options, and every job is either enlisted or officer."),
-    el("div", { class: "section-title" }, "Service types"),
+    el("div", { class: "eyebrow" }, T("Explore")),
+    el("h1", {}, T("Ways to serve")),
+    el("p", { class: "muted" }, T("Every branch has full-time and part-time options, and every job is either enlisted or officer.")),
+    el("div", { class: "section-title" }, T("Service types")),
     el("div", { class: "jobs" }, COMPONENT_ORDER.map((c) => el("div", { class: "job", style: "--hero:var(--accent)" },
       el("strong", { class: "job-name" }, COMPONENTS[c].name),
       el("p", { style: "margin:6px 0 0" }, COMPONENTS[c].about),
-      el("p", { style: "margin:8px 0 0" }, el("strong", {}, "Schedule: "), COMPONENT_DETAILS[c].schedule),
+      el("p", { style: "margin:8px 0 0" }, el("strong", {}, T("Schedule: ")), COMPONENT_DETAILS[c].schedule),
       el("ul", { class: "list good", style: "margin-top:8px" }, COMPONENT_DETAILS[c].life.map((x) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, x))))))),
-    el("div", { class: "section-title" }, "Who has what"),
+    el("div", { class: "section-title" }, T("Who has what")),
     el("div", { class: "table-wrap" }, el("table", {},
-      el("thead", {}, el("tr", {}, el("th", {}, "Branch"), COMPONENT_ORDER.map((c) => el("th", {}, COMPONENTS[c].name)))),
+      el("thead", {}, el("tr", {}, el("th", {}, T("Branch")), COMPONENT_ORDER.map((c) => el("th", {}, COMPONENTS[c].name)))),
       el("tbody", {}, ORDER.map((b) => el("tr", {},
         el("td", {}, el("a", { href: branchLink(b) }, BRANCHES[b].name)),
         COMPONENT_ORDER.map((c) => {
           const o = serviceOption(b, c);
           const exact = c === "active" || !o.note;
-          return el("td", {}, exact ? el("a", { href: branchLink(b, "enlisted", c) }, o.title) : el("span", { class: "muted" }, b === "sf" ? "Part-time inside the Space Force" : "None (use the Reserve)"));
+          return el("td", {}, exact ? el("a", { href: branchLink(b, "enlisted", c) }, o.title) : el("span", { class: "muted" }, b === "sf" ? T("Part-time inside the Space Force") : T("None (use the Reserve)")));
         })))))),
-    el("div", { class: "section-title" }, "Enlisted or officer"),
+    el("div", { class: "section-title" }, T("Enlisted or officer")),
     el("div", { class: "two-col" }, TRACK_ORDER.map((t) => el("div", { class: "job", style: "--hero:var(--accent)" },
       el("strong", { class: "job-name" }, TRACKS[t].name),
       el("p", { style: "margin:6px 0 0" }, TRACKS[t].about)))),
@@ -1093,19 +1114,19 @@ function renderTypes() {
 
 function renderTraining() {
   app.append(el("div", { class: "fade-in" },
-    el("div", { class: "eyebrow" }, "Explore"),
-    el("h1", {}, "Boot camp & training"),
-    el("p", { class: "muted" }, "How you get from civilian to trained service member, branch by branch. Checked against official branch recruiting sites in October 2026. Lengths and locations change, so confirm them with a recruiter."),
-    el("div", { class: "section-title" }, "How it works everywhere"),
+    el("div", { class: "eyebrow" }, T("Explore")),
+    el("h1", {}, T("Boot camp & training")),
+    el("p", { class: "muted" }, T("How you get from civilian to trained service member, branch by branch. Checked against official branch recruiting sites in October 2026. Lengths and locations change, so confirm them with a recruiter.")),
+    el("div", { class: "section-title" }, T("How it works everywhere")),
     el("ol", { class: "steps" }, [
-      ["Recruiter", "You talk to a recruiter, check that you qualify, and start paperwork."],
-      ["MEPS", "At the Military Entrance Processing Station you get a medical exam, pick or reserve your job and swear in. You take the ASVAB test there or beforehand at a testing site."],
-      ["Ship to boot camp", "Haircuts, uniforms, shots and paperwork in the first days, then weeks of fitness, drill, discipline, weapons and military basics, led by instructors whose title depends on the branch."],
-      ["Job training", "After boot camp you learn your actual job. The school's name and length depend on the branch and job: from a few weeks to more than a year."],
-      ["Your first unit", "Active duty members report to a duty station. Reserve and Guard members return home and drill with their unit."],
+      [T("Recruiter"), T("You talk to a recruiter, check that you qualify, and start paperwork.")],
+      ["MEPS", T("At the Military Entrance Processing Station you get a medical exam, pick or reserve your job and swear in. You take the ASVAB test there or beforehand at a testing site.")],
+      [T("Ship to boot camp"), T("Haircuts, uniforms, shots and paperwork in the first days, then weeks of fitness, drill, discipline, weapons and military basics, led by instructors whose title depends on the branch.")],
+      [T("Job training"), T("After boot camp you learn your actual job. The school's name and length depend on the branch and job: from a few weeks to more than a year.")],
+      [T("Your first unit"), T("Active duty members report to a duty station. Reserve and Guard members return home and drill with their unit.")],
     ].map(([t, x]) => el("li", {}, el("strong", {}, t), el("p", { class: "muted", style: "margin:2px 0 0" }, x)))),
-    el("div", { class: "note", style: "margin-top:14px" }, "Tip: show up in shape. Practice running, push-ups, sit-ups or planks, and swimming before you ship."),
-    el("div", { class: "section-title" }, "Branch by branch"),
+    el("div", { class: "note", style: "margin-top:14px" }, T("Tip: show up in shape. Practice running, push-ups, sit-ups or planks, and swimming before you ship.")),
+    el("div", { class: "section-title" }, T("Branch by branch")),
     el("div", { class: "jobs" }, ORDER.map((b) => trainingCard(b))),
   ));
 }

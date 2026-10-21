@@ -8,7 +8,7 @@ let infoLoading = null;
 
 function withInfo(fn) {
   if (window.INFO) { fn(); return; }
-  app.append(el("p", { class: "muted" }, "Loading..."));
+  app.append(el("p", { class: "muted" }, T("Loading...")));
   if (!infoLoading) {
     infoLoading = new Promise((resolve, reject) => {
       const s = document.createElement("script");
@@ -20,7 +20,7 @@ function withInfo(fn) {
   }
   const page = route.page;
   infoLoading.then(() => { if (route.page === page) render(); })
-    .catch(() => { app.replaceChildren(el("p", { class: "muted" }, "Couldn't load this page. Check your connection and try again.")); });
+    .catch(() => { app.replaceChildren(el("p", { class: "muted" }, T("Couldn't load this page. Check your connection and try again."))); });
 }
 
 function branchChips(current, makeHref) {
@@ -61,23 +61,23 @@ function renderPay() {
 
     // Pay calculator: any grade in this branch, any years of service.
     const grades = [...ranks.enlisted, ...(ranks.warrant || []), ...ranks.officer].map((g) => g.grade);
-    const gradeSelect = el("select", { class: "text-input", "aria-label": "Pay grade" }, grades.map((g) => {
+    const gradeSelect = el("select", { class: "text-input", "aria-label": T("Pay grade") }, grades.map((g) => {
       const titles = [...ranks.enlisted, ...(ranks.warrant || []), ...ranks.officer].find((x) => x.grade === g).titles;
       return el("option", { value: g }, `${g} · ${titles[0].title}`);
     }));
     gradeSelect.value = "E-4";
-    const yosSelect = el("select", { class: "text-input", "aria-label": "Years of service" }, pay.yos.map((y, i) =>
-      el("option", { value: i }, y === "<2" ? "Less than 2 years" : `Over ${y} years`)));
+    const yosSelect = el("select", { class: "text-input", "aria-label": T("Years of service") }, pay.yos.map((y, i) =>
+      el("option", { value: i }, y === "<2" ? T("Less than 2 years") : T("Over {years} years", { years: y }))));
     yosSelect.value = "1";
     const out = el("div", { class: "pay-out" });
     const calc = () => {
       const row = pay.table[gradeSelect.value];
       const monthly = row ? row[Number(yosSelect.value)] : null;
       const parts = monthly == null
-        ? [el("p", { class: "muted" }, "No basic pay at that grade with that little time in service (people don't normally reach it that early).")]
-        : [el("div", { class: "pay-big" }, money(monthly), el("span", { class: "muted" }, " / month")),
-           el("p", { class: "muted", style: "margin:4px 0 0" }, `${money(monthly * 12)} a year in basic pay, before taxes.`),
-           gradeSelect.value === "E-1" && yosSelect.value === "0" ? el("p", { class: "muted", style: "font-size:13px" }, `With less than 4 months of service, E-1 basic pay is ${money(pay.e1Under4Months)} a month.`) : null];
+        ? [el("p", { class: "muted" }, T("No basic pay at that grade with that little time in service (people don't normally reach it that early)."))]
+        : [el("div", { class: "pay-big" }, money(monthly), el("span", { class: "muted" }, T(" / month"))),
+           el("p", { class: "muted", style: "margin:4px 0 0" }, T("{amount} a year in basic pay, before taxes.", { amount: money(monthly * 12) })),
+           gradeSelect.value === "E-1" && yosSelect.value === "0" ? el("p", { class: "muted", style: "font-size:13px" }, T("With less than 4 months of service, E-1 basic pay is {amount} a month.", { amount: money(pay.e1Under4Months) })) : null];
       out.replaceChildren(...parts.filter(Boolean));
     };
     gradeSelect.addEventListener("change", calc);
@@ -85,38 +85,39 @@ function renderPay() {
     calc();
 
     app.append(el("div", { class: "fade-in" },
-      el("div", { class: "eyebrow" }, "Ranks & pay"),
-      el("h1", {}, "Ranks and pay"),
-      el("p", { class: "muted" }, `Every rank in each branch, and what the military pays in ${pay.year}. Basic pay is the same in every branch: it depends only on pay grade and years of service.`),
+      el("div", { class: "eyebrow" }, T("Ranks & pay")),
+      el("h1", {}, T("Ranks and pay")),
+      el("p", { class: "muted" }, T("Every rank in each branch, and what the military pays in {year}. Basic pay is the same in every branch: it depends only on pay grade and years of service.", { year: pay.year })),
+      LANG !== "en" ? el("p", { class: "muted", style: "font-size:13px" }, T("Rank titles and some details are only available in English.")) : null,
       branchChips(b, (x) => `#/pay/${x}`),
 
       el("div", { class: "card", style: "margin-top:16px" },
-        el("div", { class: "eyebrow" }, "Pay calculator"),
+        el("div", { class: "eyebrow" }, T("Pay calculator")),
         el("div", { class: "two-col", style: "gap:10px; margin-top:10px" },
-          el("label", { class: "field" }, el("span", { class: "seg-label" }, "Pay grade"), gradeSelect),
-          el("label", { class: "field" }, el("span", { class: "seg-label" }, "Years of service"), yosSelect)),
+          el("label", { class: "field" }, el("span", { class: "seg-label" }, T("Pay grade")), gradeSelect),
+          el("label", { class: "field" }, el("span", { class: "seg-label" }, T("Years of service")), yosSelect)),
         out,
-        el("div", { class: "section-title" }, "On top of basic pay"),
+        el("div", { class: "section-title" }, T("On top of basic pay")),
         el("ul", { class: "list good" },
-          el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, el("strong", {}, "Housing (BAH): "), pay.allowances.BAH.summary, " ",
-            el("a", { href: pay.allowances.BAH.calculatorUrl, target: "_blank", rel: "noopener" }, "Look up BAH ↗"))),
-          el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, el("strong", {}, "Food (BAS): "), pay.allowances.BAS.summary,
-            ` In ${pay.year} it's ${money(pay.allowances.BAS.rates2026.enlisted)} a month for enlisted members and ${money(pay.allowances.BAS.rates2026.officer)} for officers.`)),
-          el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, "Free healthcare, plus special pays and bonuses for some jobs and assignments."))),
-        el("p", { class: "muted", style: "font-size:13px" }, `${pay.year} rates (a ${pay.raisePercent}% raise), effective ${pay.effective}, from DFAS. Reserve and Guard members are paid per drill instead.`)),
+          el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, el("strong", {}, T("Housing (BAH): ")), pay.allowances.BAH.summary, " ",
+            el("a", { href: pay.allowances.BAH.calculatorUrl, target: "_blank", rel: "noopener" }, T("Look up BAH ↗")))),
+          el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, el("strong", {}, T("Food (BAS): ")), pay.allowances.BAS.summary,
+            " " + T("In {year} it's {enlisted} a month for enlisted members and {officer} for officers.", { year: pay.year, enlisted: money(pay.allowances.BAS.rates2026.enlisted), officer: money(pay.allowances.BAS.rates2026.officer) }))),
+          el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, T("Free healthcare, plus special pays and bonuses for some jobs and assignments.")))),
+        el("p", { class: "muted", style: "font-size:13px" }, T("{year} rates (a {raise}% raise), effective {date}, from DFAS. Reserve and Guard members are paid per drill instead.", { year: pay.year, raise: pay.raisePercent, date: pay.effective }))),
 
-      el("div", { class: "section-title" }, `${info.name} enlisted ranks`),
+      el("div", { class: "section-title" }, T("{branch} enlisted ranks", { branch: info.name })),
       el("div", { class: "table-wrap" }, el("table", { class: "rank-table" }, el("tbody", {}, rankRows(ranks.enlisted)))),
       ranks.enlistedNote ? el("p", { class: "muted", style: "font-size:13px" }, ranks.enlistedNote) : null,
       (ranks.warrant || []).length ? [
-        el("div", { class: "section-title" }, `${info.name} warrant officer ranks`),
+        el("div", { class: "section-title" }, T("{branch} warrant officer ranks", { branch: info.name })),
         el("div", { class: "table-wrap" }, el("table", { class: "rank-table" }, el("tbody", {}, rankRows(ranks.warrant)))),
       ] : null,
       ranks.warrantNote ? el("p", { class: "muted", style: "font-size:13px" }, ranks.warrantNote) : null,
-      el("div", { class: "section-title" }, `${info.name} officer ranks`),
+      el("div", { class: "section-title" }, T("{branch} officer ranks", { branch: info.name })),
       el("div", { class: "table-wrap" }, el("table", { class: "rank-table" }, el("tbody", {}, rankRows(ranks.officer)))),
 
-      el("div", { class: "section-title" }, "What each level does"),
+      el("div", { class: "section-title" }, T("What each level does")),
       el("div", { class: "jobs" }, Object.entries(INFO.levelNotes).map(([k, v]) => el("div", { class: "job", style: `--hero:${info.color}` },
         el("div", { class: "job-path" }, k), el("p", { style: "margin:4px 0 0" }, v)))),
     ));
@@ -148,7 +149,7 @@ function firstNumber(s, re) {
 // Compares the user's numbers with one fitness event's minimum.
 function checkEvent(event, sex, me) {
   const min = event.min && event.min[sex];
-  if (!min || /not published/i.test(min)) return { status: "na", note: "Minimum not published" };
+  if (!min || /not published/i.test(min)) return { status: "na", note: T("Minimum not published") };
   const name = event.name.toLowerCase();
   if (/pull-up/.test(name)) {
     const pulls = firstNumber(min, /(\d+)\s*pull/), pushes = firstNumber(min, /(\d+)\s*push/);
@@ -175,7 +176,7 @@ function checkEvent(event, sex, me) {
   if (dist) {
     const need = toSeconds(min);
     if (me.run == null || need == null) return { status: "skip" };
-    if (me.runDist !== dist) return { status: "na", note: `Uses a ${dist}-mile run` };
+    if (me.runDist !== dist) return { status: "na", note: T("Uses a {miles}-mile run", { miles: dist }) };
     return { status: me.run <= need ? "pass" : "fail", note: min };
   }
   return { status: "skip" };
@@ -186,16 +187,16 @@ function renderJoin() {
     const E = INFO.eligibility;
 
     // Eligibility checker.
-    const age = el("input", { class: "text-input", type: "number", min: "10", max: "80", placeholder: "Age", "aria-label": "Age" });
-    const edu = el("select", { class: "text-input", "aria-label": "Education" },
-      el("option", { value: "diploma" }, "High school diploma (or will have one)"),
-      el("option", { value: "ged" }, "GED or other credential"),
-      el("option", { value: "none" }, "Neither yet"));
-    const afqt = el("input", { class: "text-input", type: "number", min: "1", max: "99", placeholder: "AFQT score, if you have one (1-99)", "aria-label": "AFQT score" });
-    const cit = el("select", { class: "text-input", "aria-label": "Citizenship" },
-      el("option", { value: "citizen" }, "U.S. citizen"),
-      el("option", { value: "greencard" }, "Green card holder"),
-      el("option", { value: "other" }, "Neither"));
+    const age = el("input", { class: "text-input", type: "number", min: "10", max: "80", placeholder: T("Age"), "aria-label": T("Age") });
+    const edu = el("select", { class: "text-input", "aria-label": T("Education") },
+      el("option", { value: "diploma" }, T("High school diploma (or will have one)")),
+      el("option", { value: "ged" }, T("GED or other credential")),
+      el("option", { value: "none" }, T("Neither yet")));
+    const afqt = el("input", { class: "text-input", type: "number", min: "1", max: "99", placeholder: T("AFQT score, if you have one (1-99)"), "aria-label": T("AFQT score, if you have one (1-99)") });
+    const cit = el("select", { class: "text-input", "aria-label": T("Citizenship") },
+      el("option", { value: "citizen" }, T("U.S. citizen")),
+      el("option", { value: "greencard" }, T("Green card holder")),
+      el("option", { value: "other" }, T("Neither")));
     const verdicts = el("div", { class: "jobs" });
     const check = () => {
       const a = Number(age.value);
@@ -204,19 +205,21 @@ function renderJoin() {
         let status = "ok";
         const worst = (s) => { if (s === "no" || (s === "maybe" && status === "ok")) status = s; };
         const max = maxAge(b);
-        if (!age.value) { worst("maybe"); notes.push("Enter your age."); }
-        else if (a < 17) { worst("no"); notes.push(`Too young to enlist yet: the minimum is 17 (with a parent's consent).`); }
-        else if (max && a > max) { worst("no"); notes.push(`Over the enlistment age limit (${max}). Some programs and officer paths differ, so ask a recruiter.`); }
-        else if (a === 17) notes.push("At 17 you need a parent's or guardian's consent.");
-        if (cit.value === "other") { worst("no"); notes.push("You must be a U.S. citizen or green card holder to enlist."); }
-        if (b === "sf" && cit.value === "greencard") { worst("maybe"); notes.push("Green card rules for the Space Force aren't published. Ask a recruiter."); }
-        if (edu.value === "none") { worst("maybe"); notes.push("Almost everyone needs a diploma or a GED. Recruiters can explain your options."); }
+        if (!age.value) { worst("maybe"); notes.push(T("Enter your age.")); }
+        else if (a < 17) { worst("no"); notes.push(T("Too young to enlist yet: the minimum is 17 (with a parent's consent).")); }
+        else if (max && a > max) { worst("no"); notes.push(T("Over the enlistment age limit ({max}). Some programs and officer paths differ, so ask a recruiter.", { max })); }
+        else if (a === 17) notes.push(T("At 17 you need a parent's or guardian's consent."));
+        if (cit.value === "other") { worst("no"); notes.push(T("You must be a U.S. citizen or green card holder to enlist.")); }
+        if (b === "sf" && cit.value === "greencard") { worst("maybe"); notes.push(T("Green card rules for the Space Force aren't published. Ask a recruiter.")); }
+        if (edu.value === "none") { worst("maybe"); notes.push(T("Almost everyone needs a diploma or a GED. Recruiters can explain your options.")); }
         const need = E[b].asvab[edu.value === "ged" ? "ged" : "diploma"];
         if (afqt.value) {
-          if (need != null && Number(afqt.value) < need) { worst("no"); notes.push(`AFQT ${afqt.value} is under the ${need} minimum${edu.value === "ged" ? " for GED holders" : ""}. You can retake the ASVAB.`); }
-          else if (need == null) { worst("maybe"); notes.push("The minimum AFQT isn't published for this branch."); }
-        } else if (need != null) notes.push(`You'll need an AFQT of at least ${need}${edu.value === "ged" ? " with a GED" : ""}.`);
-        const label = { ok: "Looks eligible", maybe: "Check with a recruiter", no: "Not eligible right now" }[status];
+          if (need != null && Number(afqt.value) < need) {
+            worst("no");
+            notes.push(T(edu.value === "ged" ? "AFQT {score} is under the {need} minimum for GED holders. You can retake the ASVAB." : "AFQT {score} is under the {need} minimum. You can retake the ASVAB.", { score: afqt.value, need }));
+          } else if (need == null) { worst("maybe"); notes.push(T("The minimum AFQT isn't published for this branch.")); }
+        } else if (need != null) notes.push(T(edu.value === "ged" ? "You'll need an AFQT of at least {need} with a GED." : "You'll need an AFQT of at least {need}.", { need }));
+        const label = { ok: T("Looks eligible"), maybe: T("Check with a recruiter"), no: T("Not eligible right now") }[status];
         return el("div", { class: "job verdict " + status, style: `--hero:${BRANCHES[b].color}` },
           el("div", { class: "job-path" }, BRANCHES[b].name),
           el("strong", { class: "job-name" }, label),
@@ -227,12 +230,12 @@ function renderJoin() {
     check();
 
     // Fitness self-check.
-    const sex = el("select", { class: "text-input", "aria-label": "Standards" }, el("option", { value: "male" }, "Male standards"), el("option", { value: "female" }, "Female standards"));
+    const sex = el("select", { class: "text-input", "aria-label": T("Standards") }, el("option", { value: "male" }, T("Male standards")), el("option", { value: "female" }, T("Female standards")));
     const num = (ph) => el("input", { class: "text-input", type: "number", min: "0", placeholder: ph, "aria-label": ph });
-    const pushups = num("Push-ups"), pullups = num("Pull-ups"), deadlift = num("Deadlift (lbs)");
-    const plank = el("input", { class: "text-input", type: "text", placeholder: "Plank (m:ss)", "aria-label": "Plank time" });
-    const runDist = el("select", { class: "text-input", "aria-label": "Run distance" }, ["1.5", "2", "3"].map((d) => el("option", { value: d }, `${d}-mile run`)));
-    const run = el("input", { class: "text-input", type: "text", placeholder: "Run time (mm:ss)", "aria-label": "Run time" });
+    const pushups = num(T("Push-ups")), pullups = num(T("Pull-ups")), deadlift = num(T("Deadlift (lbs)"));
+    const plank = el("input", { class: "text-input", type: "text", placeholder: T("Plank (m:ss)"), "aria-label": T("Plank (m:ss)") });
+    const runDist = el("select", { class: "text-input", "aria-label": T("Run distance") }, ["1.5", "2", "3"].map((d) => el("option", { value: d }, T("{miles}-mile run", { miles: d }))));
+    const run = el("input", { class: "text-input", type: "text", placeholder: T("Run time (mm:ss)"), "aria-label": T("Run time (mm:ss)") });
     const fitOut = el("div", { class: "jobs" });
     const fitCheck = () => {
       const val = (x) => (x.value === "" ? null : Number(x.value));
@@ -246,41 +249,41 @@ function renderJoin() {
           rows.length
             ? el("ul", { class: "list", style: "margin-top:6px; font-size:14px" }, rows.map(({ e, r }) => el("li", {},
                 el("span", { class: "mark", style: `color:${r.status === "pass" ? "var(--accent)" : r.status === "fail" ? "var(--danger)" : "var(--muted)"}` }, r.status === "pass" ? "✓" : r.status === "fail" ? "✗" : "–"),
-                el("span", {}, `${e.name}: `, el("span", { class: "muted" }, r.status === "na" ? r.note : `minimum ${r.note}`)))))
-            : el("p", { class: "muted", style: "margin:6px 0 0; font-size:14px" }, "Enter numbers above to compare."));
+                el("span", {}, `${e.name}: `, el("span", { class: "muted" }, r.status === "na" ? r.note : T("minimum {value}", { value: r.note }))))))
+            : el("p", { class: "muted", style: "margin:6px 0 0; font-size:14px" }, T("Enter numbers above to compare.")));
       }));
     };
     [sex, pushups, pullups, deadlift, plank, runDist, run].forEach((x) => x.addEventListener("input", fitCheck));
     fitCheck();
 
     app.append(el("div", { class: "fade-in" },
-      el("div", { class: "eyebrow" }, "Join"),
-      el("h1", {}, "Can I join?"),
-      el("p", { class: "muted" }, "A quick check against each branch's basic enlistment rules, and how your fitness compares with each branch's test. This isn't an official decision: recruiters and MEPS make the real call, and many issues can be waived."),
+      el("div", { class: "eyebrow" }, T("Join")),
+      el("h1", {}, T("Can I join?")),
+      el("p", { class: "muted" }, T("A quick check against each branch's basic enlistment rules, and how your fitness compares with each branch's test. This isn't an official decision: recruiters and MEPS make the real call, and many issues can be waived.")),
       el("div", { class: "card", style: "margin-top:16px" },
-        el("div", { class: "eyebrow" }, "Eligibility check"),
+        el("div", { class: "eyebrow" }, T("Eligibility check")),
         el("div", { class: "form-grid" }, age, edu, afqt, cit),
         el("div", { style: "margin-top:14px" }, verdicts)),
 
-      el("div", { class: "section-title" }, "Requirements by branch"),
+      el("div", { class: "section-title" }, T("Requirements by branch")),
       el("div", { class: "jobs" }, ORDER.map((b) => {
         const e = E[b];
         return el("details", { class: "job", style: `--hero:${BRANCHES[b].color}` },
           el("summary", {}, el("strong", { class: "job-name" }, BRANCHES[b].name)),
           el("dl", { class: "req" },
-            [["Age", e.ageEnlisted], ["Officers", e.ageOfficer], ["Education", e.education],
-             ["ASVAB (AFQT)", `Diploma: ${e.asvab.diploma ?? "not published"} · GED: ${e.asvab.ged ?? "not published"}`],
-             ["Citizenship", e.citizenship], ["Tattoos", e.tattoos], ["Dependents", e.dependents], ["Medical", e.medical]]
+            [[T("Age"), e.ageEnlisted], [T("Officers"), e.ageOfficer], [T("Education"), e.education],
+             ["ASVAB (AFQT)", T("Diploma: {diploma} · GED: {ged}", { diploma: e.asvab.diploma ?? T("not published"), ged: e.asvab.ged ?? T("not published") })],
+             [T("Citizenship"), e.citizenship], [T("Tattoos"), e.tattoos], [T("Dependents"), e.dependents], [T("Medical"), e.medical]]
               .filter(([, v]) => v).map(([k, v]) => [el("dt", {}, k), el("dd", {}, v)])),
-          (e.prepPrograms || []).length ? [el("strong", { style: "font-size:14px" }, "Programs that help you qualify"),
+          (e.prepPrograms || []).length ? [el("strong", { style: "font-size:14px" }, T("Programs that help you qualify")),
             el("ul", { class: "list", style: "font-size:14px; margin-top:6px" }, e.prepPrograms.map((p) => el("li", {}, el("span", { class: "mark" }, "•"), el("span", {}, p))))] : null,
-          e.source ? el("a", { href: e.source, target: "_blank", rel: "noopener", style: "font-size:14px" }, "Official source ↗") : null);
+          e.source ? el("a", { href: e.source, target: "_blank", rel: "noopener", style: "font-size:14px" }, T("Official source ↗")) : null);
       })),
 
-      el("div", { class: "section-title" }, "Fitness tests"),
+      el("div", { class: "section-title" }, T("Fitness tests")),
       el("div", { class: "card" },
-        el("div", { class: "eyebrow" }, "Check your numbers"),
-        el("p", { class: "muted", style: "font-size:14px" }, "Enter what you can do now. It's a rough comparison with each branch's minimum for the youngest age group: event rules (time limits, hand-release push-ups and so on) differ, so train past the minimum."),
+        el("div", { class: "eyebrow" }, T("Check your numbers")),
+        el("p", { class: "muted", style: "font-size:14px" }, T("Enter what you can do now. It's a rough comparison with each branch's minimum for the youngest age group: event rules (time limits, hand-release push-ups and so on) differ, so train past the minimum.")),
         el("div", { class: "form-grid" }, sex, pushups, pullups, plank, runDist, run, deadlift),
         el("div", { style: "margin-top:14px" }, fitOut)),
       el("div", { class: "jobs", style: "margin-top:14px" }, ORDER.map((b) => {
@@ -289,13 +292,14 @@ function renderJoin() {
           el("summary", {}, el("strong", { class: "job-name" }, `${BRANCHES[b].name}: ${f.test}`)),
           el("p", { class: "muted", style: "font-size:14px" }, f.notes),
           el("div", { class: "table-wrap" }, el("table", {},
-            el("thead", {}, el("tr", {}, el("th", {}, "Event"), el("th", {}, "Male min"), el("th", {}, "Female min"))),
+            el("thead", {}, el("tr", {}, el("th", {}, T("Event")), el("th", {}, T("Male min")), el("th", {}, T("Female min")))),
             el("tbody", {}, f.events.map((e) => el("tr", {}, el("td", { class: "wrap" }, el("strong", {}, e.name), el("br"), el("span", { class: "muted" }, e.desc)),
               el("td", { class: "wrap" }, e.min ? e.min.male : ""), el("td", { class: "wrap" }, e.min ? e.min.female : "")))))),
-          f.entry ? el("p", { style: "font-size:14px" }, el("strong", {}, "Before or at boot camp: "), f.entry) : null,
-          f.source ? el("a", { href: f.source, target: "_blank", rel: "noopener", style: "font-size:14px" }, "Official source ↗") : null);
+          f.entry ? el("p", { style: "font-size:14px" }, el("strong", {}, T("Before or at boot camp: ")), f.entry) : null,
+          f.source ? el("a", { href: f.source, target: "_blank", rel: "noopener", style: "font-size:14px" }, T("Official source ↗")) : null);
       })),
-      el("p", { class: "muted", style: "font-size:13px; margin-top:16px" }, `Checked against official sources in October 2026. Standards change often, so confirm with a recruiter.`),
+      el("p", { class: "muted", style: "font-size:13px; margin-top:16px" }, T("Checked against official sources in October 2026. Standards change often, so confirm with a recruiter.")),
+      LANG !== "en" ? el("p", { class: "muted", style: "font-size:13px" }, T("Requirement details and fitness standards are only available in English.")) : null,
     ));
   });
 }
@@ -308,19 +312,19 @@ function recruiterQuestions(r) {
   const job = r.topJob(b)[0];
   const comp = r.components[0].id;
   const qs = [
-    `Is ${job.n} open right now, and what ASVAB line scores does it need?`,
-    `How long is training for ${job.n}, and where would I go?`,
-    `Are there enlistment bonuses or special pay for ${job.n} right now?`,
-    `What does a normal week look like for a ${name} ${r.track.name.toLowerCase()} member in that job?`,
-    `Can I get my job guaranteed in my contract before I ship?`,
+    T("Is {job} open right now, and what ASVAB line scores does it need?", { job: job.n }),
+    T("How long is training for {job}, and where would I go?", { job: job.n }),
+    T("Are there enlistment bonuses or special pay for {job} right now?", { job: job.n }),
+    T("What does a normal week look like in that job in the {branch}?", { branch: name }),
+    T("Can I get my job guaranteed in my contract before I ship?"),
   ];
-  if (comp === "guard") qs.push("Does my state offer tuition help for Guard members, and how often does my unit deploy?");
-  if (comp === "reserve") qs.push("Where is the nearest unit with that job, and how often does it mobilize?");
-  if (comp === "active") qs.push("How much say do I get in my first duty station?");
-  if (r.tracks[0].id === "officer") qs.push("Which route to a commission fits me best: ROTC, officer candidate school, or an academy?");
-  if (r.hasDegree && r.tracks[0].id === "enlisted") qs.push("With my degree, should I go officer instead, or enlist at a higher rank?");
-  if (interestVector(r.answers, r.qs).elite > 0) qs.push("What does the special operations selection pipeline look like, and how do I prepare for it?");
-  qs.push("What are the fitness standards I need to meet before I ship?");
-  qs.push(`What's the length of the contract, including time in the Reserve after active duty?`);
+  if (comp === "guard") qs.push(T("Does my state offer tuition help for Guard members, and how often does my unit deploy?"));
+  if (comp === "reserve") qs.push(T("Where is the nearest unit with that job, and how often does it mobilize?"));
+  if (comp === "active") qs.push(T("How much say do I get in my first duty station?"));
+  if (r.tracks[0].id === "officer") qs.push(T("Which route to a commission fits me best: ROTC, officer candidate school, or an academy?"));
+  if (r.hasDegree && r.tracks[0].id === "enlisted") qs.push(T("With my degree, should I go officer instead, or enlist at a higher rank?"));
+  if (interestVector(r.answers, r.qs).elite > 0) qs.push(T("What does the special operations selection pipeline look like, and how do I prepare for it?"));
+  qs.push(T("What are the fitness standards I need to meet before I ship?"));
+  qs.push(T("What's the length of the contract, including time in the Reserve after active duty?"));
   return qs;
 }

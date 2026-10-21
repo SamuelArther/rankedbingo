@@ -241,7 +241,7 @@ tr:last-child td { border-bottom: 0; }
 .job-path { font: 600 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--hero); margin-bottom: 4px; }
 .job-name { font-size: 18px; }
 
-.runner-up { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.runner-up { background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--hero, var(--line)); border-radius: 10px; padding: 14px 16px; }
 
 .note { background: rgba(159, 211, 107, 0.07); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
 
@@ -392,3 +392,22 @@ dl.req dd { margin: 0; }
 :root[data-theme="light"] .radar-ring.mid { stroke: #b9c4b3; }
 :root[data-theme="light"] .toast { box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15); }
 .nav-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+
+/* Language picker. */
+.lang-select {
+  margin-left: 8px; font: inherit; font-size: 14px; color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; max-width: 140px;
+}
+.nav-top > .theme-toggle { margin-left: auto; }
+[dir="rtl"] .lang-select { margin-left: 0; margin-right: 8px; }
+
+/* Right-to-left (Arabic): accent bars and timelines move to the right. */
+[dir="rtl"] .result-hero { border-left: 0; border-right: 4px solid var(--hero, var(--accent)); padding-left: 0; padding-right: 16px; }
+[dir="rtl"] .job, [dir="rtl"] .job-row { border-left-width: 1px; border-right: 4px solid var(--hero); }
+[dir="rtl"] .runner-up { border-left-width: 1px; border-right: 4px solid var(--hero, var(--line)); }
+[dir="rtl"] .timeline { border-left: 0; border-right: 2px solid var(--c, var(--accent)); padding: 0 16px 0 0; }
+[dir="rtl"] .timeline li::before { left: auto; right: -22px; }
+[dir="rtl"] .steps { padding-left: 0; padding-right: 22px; }
+[dir="rtl"] .option, [dir="rtl"] .bar-row { text-align: right; }
+[dir="rtl"] .bar > div { margin-right: 0; }
+[dir="rtl"] .bar { transform: scaleX(-1); }

@@ -51,8 +51,13 @@ function interestNote(answers, branch, qs = QUESTIONS) {
   return hit ? notes[hit] : null;
 }
 
+// "A, B and C" and "A, B or C", in the current language.
 function joinWords(words) {
-  return words.length < 2 ? words.join("") : words.slice(0, -1).join(", ") + " and " + words[words.length - 1];
+  return words.length < 2 ? words.join("") : T("{list} and {last}", { list: words.slice(0, -1).join(", "), last: words[words.length - 1] });
+}
+
+function joinOr(words) {
+  return words.length < 2 ? words.join("") : T("{list} or {last}", { list: words.slice(0, -1).join(", "), last: words[words.length - 1] });
 }
 
 const TRAIT_IDS = Object.keys(TRAITS);
@@ -154,19 +159,19 @@ function trackScore(answers, qs = QUESTIONS) {
 // Reserve or Guard, so those combinations come with a note instead.
 function serviceOption(branch, component) {
   const name = BRANCHES[branch].name;
-  if (component === "active") return { title: `Active Duty ${name}` };
+  if (component === "active") return { title: T("Active Duty {branch}", { branch: name }) };
   if (branch === "sf") {
     return {
-      title: "Space Force (part-time)",
-      note: "The Space Force has no separate Reserve or National Guard. A law passed in late 2023 lets it offer part-time service inside the Space Force itself, and it selected its first part-time Guardians (transferring from the Air Force Reserve) in 2026. Spots are limited, so ask a recruiter. The Air Force Reserve and Air National Guard are the closest part-time alternatives.",
+      title: T("Space Force (part-time)"),
+      note: T("The Space Force has no separate Reserve or National Guard. A law passed in late 2023 lets it offer part-time service inside the Space Force itself, and it selected its first part-time Guardians (transferring from the Air Force Reserve) in 2026. Spots are limited, so ask a recruiter. The Air Force Reserve and Air National Guard are the closest part-time alternatives."),
     };
   }
-  if (component === "reserve") return { title: `${name} Reserve` };
-  if (branch === "army") return { title: "Army National Guard" };
-  if (branch === "af") return { title: "Air National Guard" };
+  if (component === "reserve") return { title: T("{branch} Reserve", { branch: name }) };
+  if (branch === "army") return { title: T("Army National Guard") };
+  if (branch === "af") return { title: T("Air National Guard") };
   return {
-    title: `${name} Reserve`,
-    note: `The ${name} doesn't have a National Guard, so its Reserve is the closest part-time option. If serving your own state matters most to you, look at the Army National Guard or Air National Guard too.`,
+    title: T("{branch} Reserve", { branch: name }),
+    note: T("The {branch} doesn't have a National Guard, so its Reserve is the closest part-time option. If serving your own state matters most to you, look at the Army National Guard or Air National Guard too.", { branch: name }),
   };
 }
 
@@ -187,14 +192,18 @@ function fits(user, branch) {
     .map(([t, u]) => phrase(t, u.value));
 }
 
-// Places where the branch pulls the opposite way from the user.
-function clashes(user, branch) {
+// Places where the branch pulls the opposite way from the user. `subject`
+// is null for "you", a friend's name, or "" for "they".
+function clashes(user, branch, subject = null) {
   const p = BRANCHES[branch].traits;
   return Object.entries(user)
     .map(([t, u]) => ({ t, u, gap: Math.abs(u.value - p[t]) }))
     .filter(({ t, u, gap }) => gap >= 2 && Math.abs(p[t]) >= 1 && Math.abs(u.value) >= 0.5 && Math.sign(u.value) !== Math.sign(p[t]))
     .sort((a, b) => b.gap * b.u.weight - a.gap * a.u.weight)
-    .map(({ t, u }) => `The ${BRANCHES[branch].name} leans toward ${phrase(t, BRANCHES[branch].traits[t])}, but you leaned toward ${phrase(t, u.value)}.`);
+    .map(({ t, u }) => T(subject == null ? "The {branch} leans toward {branchLean}, but you leaned toward {lean}."
+      : subject ? "The {branch} leans toward {branchLean}, but {name} leaned toward {lean}."
+        : "The {branch} leans toward {branchLean}, but they leaned toward {lean}.",
+    { branch: BRANCHES[branch].name, branchLean: phrase(t, BRANCHES[branch].traits[t]), lean: phrase(t, u.value), name: subject }));
 }
 
 // ---------------------------------------------------------------------------

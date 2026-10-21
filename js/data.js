@@ -761,6 +761,25 @@ const BINGO_POOL = [
   bingoSquare(273, "I don't want to move every few years", { c: { guard: 1, reserve: 1 } }),
 ];
 
+// Official recruiter locators, checked on each branch's site in October 2026.
+// The Guard has its own recruiters; the Reserve uses each branch's locator.
+const RECRUITERS = {
+  army: "https://www.goarmy.com/locate-a-recruiter",
+  usmc: "https://www.marines.com/contact-a-recruiter",
+  navy: "https://www.navy.com/contact-us/find-a-recruiter",
+  af: "https://www.airforce.com/find-a-recruiter",
+  sf: "https://www.spaceforce.com/find-local-recruiter",
+  cg: "https://www.gocoastguard.com/connect",
+  armyGuard: "https://www.nationalguard.com/find-a-recruiter",
+  airGuard: "https://www.airforce.com/ways-to-serve/air-national-guard",
+};
+
+function recruiterLink(branch, component) {
+  if (component === "guard" && branch === "army") return RECRUITERS.armyGuard;
+  if (component === "guard" && branch === "af") return RECRUITERS.airGuard;
+  return RECRUITERS[branch];
+}
+
 // Every question and bingo square, for looking up ids in share links.
 const ALL_QUESTIONS = [...POOL, ...BINGO_POOL];
 
@@ -1134,6 +1153,8 @@ const COMPONENT_DETAILS = {
   active: {
     schedule: "Full-time, every day, like any job, plus deployments and field training.",
     life: ["You live on or near a base, or aboard a ship in sea-going jobs", "Full-time pay, plus housing, food allowance and healthcare", "You move to a new duty station every few years", "How often you deploy depends on your job and unit"],
+    // First line for branches without ships.
+    lifeLand: "You live on or near a base",
   },
   reserve: {
     schedule: "Usually one weekend a month and about two weeks of training a year.",
@@ -1145,11 +1166,43 @@ const COMPONENT_DETAILS = {
   },
 };
 
-// Faded background photos behind the results, by branch.
-const BG_IMAGES = { army: "images/army.jpg", usmc: "images/usmc.jpg", navy: "images/navy.jpg", af: "images/af.jpg", sf: "images/sf.jpg", cg: "images/cg.jpg" };
+// Photos behind results and on share cards, several per branch. `focus` is
+// where the action is (fractions of width and height), so crops center on it.
+const BG_PHOTOS = {
+  army: [
+    { src: "images/army.jpg", focus: [0.63, 0.5] },   // lead soldier and convoy in the snow
+    { src: "images/army2.jpg", focus: [0.45, 0.45] }, // howitzer crew firing
+    { src: "images/army3.jpg", focus: [0.35, 0.4] },  // soldier aiming from a fighting position
+    { src: "images/army4.jpg", focus: [0.38, 0.5] },  // Ranger on the rope course
+  ],
+  usmc: [
+    { src: "images/usmc.jpg", focus: [0.5, 0.45] },   // Marines advancing toward the blast
+    { src: "images/usmc2.jpg", focus: [0.35, 0.5] },  // clay target shooting off a ship
+    { src: "images/usmc3.jpg", focus: [0.6, 0.5] },   // CH-53 refueling in flight with a sling load
+    { src: "images/usmc4.jpg", focus: [0.45, 0.5] },  // team moving with night vision
+  ],
+  navy: [
+    { src: "images/navy.jpg", focus: [0.4, 0.5] },    // sailors hauling the line
+    { src: "images/navy2.jpg", focus: [0.6, 0.35] },  // close-in weapon system firing at dusk
+    { src: "images/navy3.jpg", focus: [0.55, 0.45] }, // sailor on a machine gun
+    { src: "images/navy4.jpg", focus: [0.55, 0.6] },  // sailors manning the rails
+  ],
+  af: [{ src: "images/af.jpg", focus: [0.7, 0.4] }],       // jet on afterburner
+  sf: [{ src: "images/sf.jpg", focus: [0.55, 0.4] }],      // two Guardians
+  cg: [
+    { src: "images/cg.jpg", focus: [0.57, 0.58] },   // response boat
+    { src: "images/cg2.jpg", focus: [0.35, 0.5] },   // deck crew hauling a line
+    { src: "images/cg3.jpg", focus: [0.45, 0.55] },  // gun crew firing at sea
+    { src: "images/cg4.jpg", focus: [0.55, 0.55] },  // cutter's deck gun firing
+  ],
+};
 
-// Where the action is in each photo (fractions of width and height), so
-// crops center on it: the lead soldier and convoy, the Marines advancing
-// toward the blast, the sailors hauling the line, the jet on afterburner,
-// the two Guardians, the response boat.
-const BG_FOCUS = { army: [0.63, 0.5], usmc: [0.5, 0.45], navy: [0.4, 0.5], af: [0.7, 0.4], sf: [0.55, 0.4], cg: [0.57, 0.58] };
+// Picks a branch's photo; the same seed (like a result's share code) always
+// gets the same one.
+function photoFor(branch, seed = "") {
+  const list = BG_PHOTOS[branch];
+  if (!list) return null;
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return list[h % list.length];
+}

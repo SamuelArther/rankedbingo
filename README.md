@@ -16,9 +16,14 @@ A quiz that matches you to the U.S. military branch that fits you best (Army, Ma
 - The final pick is always a real option, like "Air National Guard, Enlisted". Only the Army and Air Force have a National Guard, and the Space Force has no separate Reserve, so those cases fall back to the closest option with a note.
 - Progress is saved in your browser, so you can close the tab and continue later.
 
+## Languages
+
+English, Español, Tagalog, Tiếng Việt, 中文, 한국어, Français, Português and العربية (right to left). The site picks your browser's language, and there's a picker in the top bar. Translations were made with AI and checked automatically for completeness; the full job lists and official requirement details stay in English.
+
 ## Sharing
 
 - **Share link:** a link to your result (with your name if you add one). Friends who open it see your full result.
+- **Find a recruiter:** links to each branch's official recruiter locator (and the Army and Air National Guard's).
 - **Compare:** paste a friend's link (or open theirs after taking the quiz) to see both results side by side.
 - **Share image:** a card with your branch photo, the six-branch graph and your reasons, in three formats: long (phone story), wide (desktop) and square (rounded corners).
 

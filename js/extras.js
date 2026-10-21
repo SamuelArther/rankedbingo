@@ -83,7 +83,7 @@ function award(id) {
   earned.add(id);
   saveJson(BADGE_KEY, [...earned]);
   const b = BADGES.find((x) => x.id === id);
-  if (b) toast(`${b.icon} Badge unlocked: ${b.name}`);
+  if (b) toast(`${b.icon} ${T("Badge unlocked: {name}", { name: b.name })}`);
 }
 
 // Called once when a quiz is finished.
@@ -150,11 +150,11 @@ function renderBingoPlay() {
   const { marked, lines } = bingoLinesFor(state.answers);
   const inLine = new Set(lines.flat());
   app.append(el("div", { class: "card fade-in" },
-    el("div", { class: "eyebrow" }, "Bingo mode"),
-    el("h2", { style: "margin-bottom:6px" }, "Tap every square that fits you"),
-    el("p", { class: "muted", style: "font-size:14px" }, `Then hit Done to see your branch. Checked: ${checked}${lines.length ? ` · BINGO ×${lines.length}! 🎯` : ""}`),
+    el("div", { class: "eyebrow" }, T("Bingo mode")),
+    el("h2", { style: "margin-bottom:6px" }, T("Tap every square that fits you")),
+    el("p", { class: "muted", style: "font-size:14px" }, T("Then hit Done to see your branch. Checked: {count}", { count: checked }) + (lines.length ? ` · ${T("BINGO ×{count}!", { count: lines.length })} 🎯` : "")),
     el("div", { class: "bingo-board play" }, cells.map((q, i) => {
-      if (!q) return el("div", { class: "bingo-cell marked free" + (inLine.has(i) ? " line" : ""), style: "--c:var(--accent)" }, "★ FREE");
+      if (!q) return el("div", { class: "bingo-cell marked free" + (inLine.has(i) ? " line" : ""), style: "--c:var(--accent)" }, T("★ FREE"));
       const qi = i < 12 ? i : i - 1;
       return el("button", {
         class: "bingo-cell" + (marked[i] ? " marked" : "") + (inLine.has(i) ? " line" : ""),
@@ -168,7 +168,7 @@ function renderBingoPlay() {
       }, q.q, DEBUG ? el("span", { class: "debug" }, describeEffects(q.options[0])) : null);
     })),
     el("div", { class: "nav" },
-      el("button", { onclick: () => { state.step = -1; render(); } }, "Back"),
+      el("button", { onclick: () => { state.step = -1; render(); } }, T("Back")),
       el("button", {
         class: "primary", disabled: checked < MIN_BINGO_CHECKS,
         onclick: () => {
@@ -178,7 +178,7 @@ function renderBingoPlay() {
           save();
           render();
         },
-      }, checked < MIN_BINGO_CHECKS ? `Check at least ${MIN_BINGO_CHECKS}` : "Done")),
+      }, checked < MIN_BINGO_CHECKS ? T("Check at least {count}", { count: MIN_BINGO_CHECKS }) : T("Done"))),
   ));
 }
 
@@ -188,11 +188,11 @@ function bingoResultCard(qs, answers) {
   const { marked, lines } = bingoLinesFor(answers);
   const inLine = new Set(lines.flat());
   return el("div", {},
-    el("div", { class: "bingo-head", style: "--c:var(--accent)" }, lines.length ? `BINGO ×${lines.length}! 🎯` : `${answers.filter((a) => a === 0).length} squares checked`),
+    el("div", { class: "bingo-head", style: "--c:var(--accent)" }, lines.length ? `${T("BINGO ×{count}!", { count: lines.length })} 🎯` : T("{count} squares checked", { count: answers.filter((a) => a === 0).length })),
     el("div", { class: "bingo-board play" }, cells.map((q, i) => el("div", {
       class: "bingo-cell" + (marked[i] ? " marked" : "") + (inLine.has(i) ? " line" : "") + (q ? "" : " free"),
       style: "--c:var(--accent)",
-    }, q ? q.q : "★ FREE"))));
+    }, q ? q.q : T("★ FREE")))));
 }
 
 // ---------------------------------------------------------------------------
@@ -224,7 +224,7 @@ function renderBootcampBingo() {
     const inLine = new Set(lines.flat());
     if (lines.length) award("graduate");
     wrap.replaceChildren(
-      el("div", { class: "bingo-head", style: "--c:var(--accent)" }, lines.length ? `BINGO ×${lines.length}! 🎓` : "Tap what happened (or what you expect)"),
+      el("div", { class: "bingo-head", style: "--c:var(--accent)" }, lines.length ? `${T("BINGO ×{count}!", { count: lines.length })} 🎓` : T("Tap what happened (or what you expect)")),
       el("div", { class: "bingo-board" }, cells.map((c, i) => el("button", {
         class: "bingo-cell" + (marked[i] ? " marked" : "") + (inLine.has(i) ? " line" : "") + (c === "free" ? " free" : ""),
         style: "--c:var(--accent)",
@@ -235,9 +235,9 @@ function renderBootcampBingo() {
           saveJson(BOOT_KEY, saved);
           draw();
         },
-      }, c === "free" ? "★ FREE" : BOOTCAMP_SQUARES[c]))),
+      }, c === "free" ? T("★ FREE") : BOOTCAMP_SQUARES[c]))),
       el("div", { class: "actions", style: "justify-content:center" },
-        el("button", { onclick: () => { saved = { order: shuffled([...Array(24).keys()], makeRng(Date.now())), marked: [] }; saveJson(BOOT_KEY, saved); draw(); } }, "New card")),
+        el("button", { onclick: () => { saved = { order: shuffled([...Array(24).keys()], makeRng(Date.now())), marked: [] }; saveJson(BOOT_KEY, saved); draw(); } }, T("New card"))),
     );
   };
   draw();
@@ -259,13 +259,13 @@ function phoneticGame() {
   const box = el("div", { class: "phonetic" });
   let best = loadJson("rankedbingo.phonetic.best", 0);
   const idle = () => box.replaceChildren(
-    el("p", { class: "muted", style: "margin-top:0" }, `Type the code word for each letter (A is Alfa, B is Bravo...). You get 60 seconds. Best: ${best}.`),
+    el("p", { class: "muted", style: "margin-top:0" }, T("Type the code word for each letter (A is Alfa, B is Bravo...). You get 60 seconds. Best: {best}.", { best })),
     el("div", { class: "chips" }, Object.entries(PHONETIC).map(([l, w]) => el("span", { class: "chip" }, el("strong", {}, l), ` ${w}`))),
-    el("div", { class: "actions", style: "justify-content:center" }, el("button", { class: "primary", onclick: play }, "Start")));
+    el("div", { class: "actions", style: "justify-content:center" }, el("button", { class: "primary", onclick: play }, T("Start"))));
   const play = () => {
     let score = 0, letter = "", timeLeft = 60;
     const big = el("div", { class: "phonetic-letter" });
-    const input = el("input", { class: "text-input", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false", placeholder: "Code word", "aria-label": "Code word" });
+    const input = el("input", { class: "text-input", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false", placeholder: T("Code word"), "aria-label": T("Code word") });
     const status = el("div", { class: "muted" });
     const nextLetter = () => {
       const letters = Object.keys(PHONETIC).filter((x) => x !== letter);
@@ -273,7 +273,7 @@ function phoneticGame() {
       big.textContent = letter;
       input.value = "";
     };
-    const tick = () => { status.textContent = `${timeLeft}s left · score ${score}`; };
+    const tick = () => { status.textContent = T("{seconds}s left · score {score}", { seconds: timeLeft, score }); };
     input.addEventListener("input", () => {
       const guess = input.value.toLowerCase().replace(/[^a-z]/g, "");
       const target = PHONETIC[letter].toLowerCase().replace(/[^a-z]/g, "");
@@ -288,8 +288,8 @@ function phoneticGame() {
       if (!box.isConnected) return;
       if (score > best) { best = score; saveJson("rankedbingo.phonetic.best", best); }
       if (score >= 20) award("phonetic");
-      box.replaceChildren(el("div", { class: "bingo-head", style: "--c:var(--accent)" }, `Time! You got ${score}.`), el("p", { class: "muted", style: "text-align:center" }, `Best: ${best}`),
-        el("div", { class: "actions", style: "justify-content:center" }, el("button", { class: "primary", onclick: play }, "Play again"), el("button", { onclick: idle }, "Back")));
+      box.replaceChildren(el("div", { class: "bingo-head", style: "--c:var(--accent)" }, T("Time! You got {score}.", { score })), el("p", { class: "muted", style: "text-align:center" }, T("Best: {best}", { best })),
+        el("div", { class: "actions", style: "justify-content:center" }, el("button", { class: "primary", onclick: play }, T("Play again")), el("button", { onclick: idle }, T("Back"))));
     }, 1000);
   };
   idle();
@@ -325,11 +325,11 @@ function basesSection() {
     el("summary", {}, el("strong", { class: "job-name" }, `${BRANCHES[b].name} (${INFO.bases[b].length})`)),
     el("ul", { class: "list", style: "margin-top:8px" }, INFO.bases[b].map((x) => el("li", {}, el("span", { class: "mark" }, "📍"),
       el("span", {}, el("strong", {}, x.name), `, ${x.place}. `, el("span", { class: "muted" }, x.knownFor), " ",
-        el("a", { href: `https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lon}#map=10/${x.lat}/${x.lon}`, target: "_blank", rel: "noopener" }, "Map ↗"))))))));
+        el("a", { href: `https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lon}#map=10/${x.lat}/${x.lon}`, target: "_blank", rel: "noopener" }, T("Map ↗")))))))));
 }
 
 function slangSection() {
-  const search = el("input", { class: "text-input", type: "search", placeholder: "Search slang", "aria-label": "Search slang" });
+  const search = el("input", { class: "text-input", type: "search", placeholder: T("Search slang"), "aria-label": T("Search slang") });
   const list = el("dl", { class: "req" });
   const draw = () => {
     const q = search.value.trim().toLowerCase();
@@ -345,24 +345,24 @@ function slangSection() {
 function renderFun() {
   withInfo(() => {
     app.append(el("div", { class: "fade-in" },
-      el("div", { class: "eyebrow" }, "Fun"),
-      el("h1", {}, "Games and extras"),
-      el("div", { class: "section-title" }, "Boot camp bingo"),
+      el("div", { class: "eyebrow" }, T("Fun")),
+      el("h1", {}, T("Games and extras")),
+      el("div", { class: "section-title" }, T("Boot camp bingo")),
       renderBootcampBingo(),
-      el("div", { class: "section-title" }, "Phonetic alphabet challenge"),
+      el("div", { class: "section-title" }, T("Phonetic alphabet challenge")),
       phoneticGame(),
-      el("div", { class: "section-title" }, "Military slang"),
+      el("div", { class: "section-title" }, T("Military slang")),
       slangSection(),
-      el("div", { class: "section-title" }, "History timeline"),
+      el("div", { class: "section-title" }, T("History timeline")),
       historySection(),
-      el("div", { class: "section-title" }, "Famous people who served"),
+      el("div", { class: "section-title" }, T("Famous people who served")),
       peopleSection(),
-      el("div", { class: "section-title" }, "Where they're based"),
+      el("div", { class: "section-title" }, T("Where they're based")),
       basesSection(),
-      el("div", { class: "section-title" }, "Your badges"),
-      el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, "Saved in this browser only."),
+      el("div", { class: "section-title" }, T("Your badges")),
+      el("p", { class: "muted", style: "font-size:14px; margin-top:-4px" }, T("Saved in this browser only.")),
       badgeGrid(),
-      el("p", { class: "muted", style: "font-size:13px; margin-top:16px" }, "History, bases and people were researched from official branch and history sites in October 2026."),
+      el("p", { class: "muted", style: "font-size:13px; margin-top:16px" }, T("History, bases and people were researched from official branch and history sites in October 2026.")),
     ));
   });
 }

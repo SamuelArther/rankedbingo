@@ -4,7 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ranked Bingo</title>
-<meta name="description" content="Answer questions about how you live, work and think to see which U.S. military branch fits you best.">
+<meta name="description" content="Which U.S. military branch fits you? Take the quiz or play Bingo mode, then explore jobs, boot camp, pay and what it takes to join.">
+<!-- Link previews (Discord, iMessage, social apps). -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ranked Bingo">
+<meta property="og:title" content="Ranked Bingo: which military branch fits you?">
+<meta property="og:description" content="Take the quiz or play Bingo mode, then explore every branch, 1,000+ jobs, boot camp, pay and what it takes to join.">
+<meta property="og:url" content="https://samuelarther.github.io/rankedbingo/">
+<meta property="og:image" content="https://samuelarther.github.io/rankedbingo/icons/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Ranked Bingo: a bingo card logo and the question, which military branch fits you?">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0b0f0c">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -12,6 +23,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Ranked Bingo">
 <link rel="stylesheet" href="css/style.css">
+<script>
+  // Pick the language (saved choice, else the browser's) and load its
+  // translations before the app scripts run.
+  (function () {
+    var supported = ["en", "es", "tl", "vi", "zh", "ko", "fr", "pt", "ar"];
+    var lang = null;
+    try { lang = localStorage.getItem("rankedbingo.lang"); } catch (e) {}
+    if (!lang) {
+      var nav = (navigator.language || "en").toLowerCase();
+      lang = nav.indexOf("fil") === 0 ? "tl" : nav.slice(0, 2);
+    }
+    if (supported.indexOf(lang) < 0) lang = "en";
+    window.I18N_LANG = lang;
+    if (lang !== "en") document.write('<script src="lang/' + lang + '.js"><\/script>');
+  })();
+</script>
 <script>
   // Apply the saved theme (or the system's) before the page paints.
   try {
@@ -29,6 +56,7 @@
   Talk to a recruiter from each branch you're interested in before deciding anything.
 </footer>
 
+<script src="js/i18n.js"></script>
 <script src="js/data.js"></script>
 <script src="js/logic.js"></script>
 <script src="js/extras.js"></script>
