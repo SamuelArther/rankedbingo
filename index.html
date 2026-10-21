@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Branch Finder</title>
+<meta name="description" content="Answer questions about how you live, work and think to see which U.S. military branch fits you best.">
+<style>
+  :root {
+    --bg: #0b0f0c;
+    --panel: #121912;
+    --panel-2: #182118;
+    --line: #26332a;
+    --text: #e3eadf;
+    --muted: #8d9a8a;
+    --accent: #9fd36b;
+    --accent-ink: #0b0f0c;
+    --warn: #e8b04a;
+    --focus: #d6f5b0;
+    --radius: 14px;
+    --mono: ui-monospace, "Cascadia Mono", "Consolas", "SF Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse at top, rgba(159, 211, 107, 0.08), transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0 31px, rgba(255, 255, 255, 0.025) 31px 32px),
+      repeating-linear-gradient(90deg, transparent 0 31px, rgba(255, 255, 255, 0.025) 31px 32px),
+      var(--bg);
+    color: var(--text);
+    font: 16px/1.5 var(--sans);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+  }
+
+  main { width: 100%; max-width: 680px; }
+
+  .eyebrow {
+    font: 600 12px/1 var(--mono);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.1; margin: 10px 0 12px; letter-spacing: -0.01em; }
+  h2 { font-size: clamp(20px, 4.5vw, 26px); line-height: 1.25; margin: 10px 0 20px; }
+
+  p { margin: 0 0 14px; }
+  .muted { color: var(--muted); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: clamp(20px, 5vw, 32px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .branch-strip { margin: 18px 0 24px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
+  button {
+    font: inherit; color: inherit; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel-2);
+    border-radius: 10px; padding: 12px 18px;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  button:hover { border-color: var(--accent); }
+  button:active { transform: scale(0.99); }
+  button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button:disabled:hover { border-color: var(--line); }
+
+  .primary {
+    background: var(--accent); color: var(--accent-ink);
+    border-color: var(--accent); font-weight: 700;
+  }
+  .primary:hover { filter: brightness(1.08); }
+  .primary:disabled:hover { border-color: var(--accent); filter: none; }
+
+  .progress-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font: 600 12px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  .progress { height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin-bottom: 22px; }
+  .progress > div { height: 100%; background: var(--accent); width: 0; transition: width 0.3s ease; }
+
+  .options { display: grid; gap: 10px; }
+  .option {
+    display: flex; gap: 14px; align-items: flex-start;
+    text-align: left; width: 100%; padding: 14px 16px;
+  }
+  .option .key {
+    flex: none; width: 26px; height: 26px; border-radius: 7px;
+    display: grid; place-items: center;
+    font: 700 13px/1 var(--mono); color: var(--muted);
+    border: 1px solid var(--line); background: var(--bg);
+  }
+  .option.selected { border-color: var(--accent); background: rgba(159, 211, 107, 0.1); }
+  .option.selected .key { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .nav { display: flex; justify-content: space-between; margin-top: 20px; }
+
+  .result-hero { border-left: 4px solid var(--hero, var(--accent)); padding-left: 16px; margin-bottom: 22px; }
+  .result-hero .pct { font: 700 14px/1 var(--mono); color: var(--hero, var(--accent)); letter-spacing: 0.1em; }
+
+  .section-title {
+    font: 600 12px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); margin: 26px 0 12px;
+  }
+
+  .list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .list li { display: flex; gap: 10px; align-items: flex-start; }
+  .list .mark { flex: none; font: 700 14px/1.5 var(--mono); }
+  .list.good .mark { color: var(--accent); }
+  .list.warn .mark { color: var(--warn); }
+
+  .bars { display: grid; gap: 12px; }
+  .bar-row { display: grid; grid-template-columns: 112px 1fr 44px; gap: 12px; align-items: center; font-size: 14px; }
+  .bar { height: 10px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; border-radius: 999px; transition: width 0.8s cubic-bezier(.2,.8,.2,1); }
+  .bar-row .num { font-family: var(--mono); text-align: right; color: var(--muted); }
+
+  .runner-up { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+
+  .note { background: rgba(159, 211, 107, 0.07); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+
+  footer { max-width: 680px; margin-top: 22px; font-size: 13px; color: var(--muted); text-align: center; }
+
+  .fade-in { animation: fade 0.25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 480px) {
+    .bar-row { grid-template-columns: 92px 1fr 40px; font-size: 13px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<footer>
+  Just for fun. Not affiliated with or endorsed by the U.S. military or any branch.
+  Talk to a recruiter from each branch you're interested in before deciding anything.
+</footer>
+
+<script>
+"use strict";
+
+// Traits run from -2 to +2. Each has a phrase for each direction, used to
+// explain results.
+const TRAITS = {
+  sea:       { pos: "lots of time at sea",              neg: "staying on dry land" },
+  land:      { pos: "field work on land",               neg: "work away from the field" },
+  air:       { pos: "aircraft and flying",              neg: "work away from aviation" },
+  space:     { pos: "space and satellites",             neg: "down-to-earth work" },
+  physical:  { pos: "hard physical challenges",         neg: "less physically demanding work" },
+  tech:      { pos: "highly technical work",            neg: "hands-on, non-technical work" },
+  tradition: { pos: "strict discipline and tradition",  neg: "a relaxed, professional culture" },
+  travel:    { pos: "deploying far from home",          neg: "staying close to home" },
+  homeland:  { pos: "missions here in the U.S.",        neg: "missions overseas" },
+  combat:    { pos: "front-line combat roles",          neg: "support and non-combat roles" },
+  scale:     { pos: "a huge organization",              neg: "a small, tight-knit branch" },
+  comfort:   { pos: "comfortable living conditions",    neg: "roughing it" },
+};
+
+// Branch profiles on the same -2..+2 scale. These are broad generalizations;
+// every branch has a wide range of jobs.
+const BRANCHES = {
+  army: {
+    name: "Army",
+    color: "#8fa45a",
+    tagline: "The biggest branch, with a job for almost everything.",
+    about: "The Army handles land operations. Because it's so big, it has a huge range of jobs: infantry, armor, artillery, medicine, engineering, logistics, intelligence, cyber, and more helicopters than any other branch.",
+    traits: { sea: -1, land: 2, air: 0, space: -1, physical: 1, tech: 0, tradition: 1, travel: 1, homeland: 0, combat: 2, scale: 2, comfort: 0 },
+  },
+  usmc: {
+    name: "Marine Corps",
+    color: "#d0453a",
+    tagline: "A fast, tough expeditionary force.",
+    about: "The Marines deploy quickly by sea and air, often from Navy ships. It's part of the Department of the Navy. It's known for the toughest boot camp, strong tradition, and an \"every Marine a rifleman\" mindset, no matter the job.",
+    traits: { sea: 1, land: 2, air: 0, space: -2, physical: 2, tech: -1, tradition: 2, travel: 2, homeland: -1, combat: 2, scale: 0, comfort: -2 },
+  },
+  navy: {
+    name: "Navy",
+    color: "#4a7fd6",
+    tagline: "Ships, submarines and carriers around the world.",
+    about: "The Navy operates on, under and above the sea worldwide. It has lots of technical jobs, from nuclear power and engineering to aviation, plus long deployments and port visits in other countries.",
+    traits: { sea: 2, land: -1, air: 1, space: -1, physical: 0, tech: 1, tradition: 1, travel: 2, homeland: -1, combat: 0, scale: 1, comfort: -1 },
+  },
+  af: {
+    name: "Air Force",
+    color: "#5fb8e8",
+    tagline: "Aircraft, tech, and a good quality of life.",
+    about: "The Air Force runs aircraft, airlift, refueling and a lot of the military's tech and cyber work. It's known for comfortable bases and many jobs that turn into civilian careers.",
+    traits: { sea: -2, land: 0, air: 2, space: 1, physical: -1, tech: 2, tradition: -1, travel: 0, homeland: 0, combat: -1, scale: 1, comfort: 2 },
+  },
+  sf: {
+    name: "Space Force",
+    color: "#b9a6f0",
+    tagline: "The newest and smallest branch, working in orbit.",
+    about: "Created in 2019, the Space Force operates satellites, missile warning, GPS and space tracking. Its members are called Guardians. It's small and very tech focused, so most jobs involve screens and systems rather than field work.",
+    traits: { sea: -2, land: -1, air: 0, space: 2, physical: -2, tech: 2, tradition: -1, travel: -1, homeland: 0, combat: -2, scale: -2, comfort: 2 },
+  },
+  cg: {
+    name: "Coast Guard",
+    color: "#f08a3c",
+    tagline: "Rescues and law enforcement on U.S. waters.",
+    about: "In peacetime the Coast Guard is part of the Department of Homeland Security. It does search and rescue, stops drug smuggling, enforces maritime law and protects the environment, mostly close to U.S. coasts. It's small, and its missions happen at home.",
+    traits: { sea: 2, land: -1, air: 0, space: -2, physical: 1, tech: 0, tradition: 0, travel: -2, homeland: 2, combat: -1, scale: -2, comfort: 0 },
+  },
+};
+
+const ORDER = ["army", "usmc", "navy", "af", "sf", "cg"];
+
+// Each option nudges one or more traits. Questions are deliberately indirect,
+// so no single answer decides the result.
+const QUESTIONS = [
+  { topic: "Environment", q: "Pick the view from your workplace window.", options: [
+    { t: "Endless ocean in every direction", w: { sea: 2, land: -1 } },
+    { t: "Forests, deserts or mountains", w: { land: 2, sea: -1 } },
+    { t: "A flight line full of aircraft", w: { air: 2 } },
+    { t: "No window, just a wall of screens tracking satellites", w: { space: 2, tech: 1, physical: -1 } },
+  ] },
+  { topic: "Free time", q: "A free weekend. Which trip do you pick?", options: [
+    { t: "Backpacking and sleeping on the ground", w: { physical: 1, comfort: -2, land: 1 } },
+    { t: "Fishing or boating", w: { sea: 2 } },
+    { t: "An air show or a space center", w: { air: 1, space: 1, tech: 1 } },
+    { t: "A nice hotel with good Wi-Fi", w: { comfort: 2, physical: -1 } },
+  ] },
+  { topic: "Sea time", q: "How do you feel about living on a ship for months?", options: [
+    { t: "Sounds like an adventure", w: { sea: 2, travel: 1 } },
+    { t: "Days or weeks on a boat, sure. Months is a lot", w: { sea: 1, travel: -1 } },
+    { t: "I'd rather keep my feet on the ground", w: { sea: -1 } },
+    { t: "I get seasick just thinking about it", w: { sea: -2 } },
+  ] },
+  { topic: "Fitness", q: "A 12-mile hike carrying a heavy pack sounds...", options: [
+    { t: "Like a good day", w: { physical: 2, land: 1 } },
+    { t: "Tough, but I'd push through", w: { physical: 1 } },
+    { t: "Like something I'd do only if I had to", w: { physical: -1 } },
+    { t: "Like a hard pass", w: { physical: -2 } },
+  ] },
+  { topic: "Combat", q: "How do you feel about possibly being in direct combat?", options: [
+    { t: "It's a big part of why I'd join", w: { combat: 2 } },
+    { t: "I'd accept it if it came to that", w: { combat: 1 } },
+    { t: "I'd prefer a support or technical role", w: { combat: -1, tech: 1 } },
+    { t: "I want to protect and help people, not fight", w: { combat: -2, homeland: 1 } },
+  ] },
+  { topic: "Tech", q: "A friend's computer stops working. You...", options: [
+    { t: "Open it up and fix it", w: { tech: 2 } },
+    { t: "Look it up and probably figure it out", w: { tech: 1 } },
+    { t: "Tell them to take it to a shop", w: { tech: -1 } },
+    { t: "Would rather be outside than fixing anything", w: { tech: -2, land: 1 } },
+  ] },
+  { topic: "Discipline", q: "Daily inspections, perfect uniforms, marching in step:", options: [
+    { t: "Love it. Discipline makes me better", w: { tradition: 2 } },
+    { t: "Fine with it", w: { tradition: 1 } },
+    { t: "I'd put up with it", w: { tradition: -1 } },
+    { t: "It would drive me up the wall", w: { tradition: -2 } },
+  ] },
+  { topic: "Travel", q: "How often do you want to be away from home?", options: [
+    { t: "As much as possible", w: { travel: 2 } },
+    { t: "Some deployments are fine", w: { travel: 1 } },
+    { t: "Rarely", w: { travel: -1, homeland: 1 } },
+    { t: "I want to stay in the U.S.", w: { travel: -2, homeland: 2 } },
+  ] },
+  { topic: "Purpose", q: "Which headline would make you proudest to be part of?", options: [
+    { t: "\"Rescuers pull 40 people from hurricane floodwaters\"", w: { homeland: 2, sea: 1 } },
+    { t: "\"Troops secure key city overseas\"", w: { combat: 2, land: 1, travel: 1 } },
+    { t: "\"Carrier group arrives to calm tensions abroad\"", w: { sea: 2, travel: 2 } },
+    { t: "\"New satellites keep GPS safe from jamming\"", w: { space: 2, tech: 2 } },
+    { t: "\"Airlift gets supplies across the globe in 24 hours\"", w: { air: 2, travel: 1 } },
+  ] },
+  { topic: "Size", q: "Big organization or small?", options: [
+    { t: "The biggest, with the most options", w: { scale: 2 } },
+    { t: "Big, but not giant", w: { scale: 1 } },
+    { t: "Small, where I'd stand out", w: { scale: -2 } },
+  ] },
+  { topic: "Options", q: "How do you feel about picking a job?", options: [
+    { t: "Give me hundreds of choices, I want to explore", w: { scale: 2, comfort: 1 } },
+    { t: "A solid list is fine", w: { scale: 1 } },
+    { t: "I already know exactly what I want to do", w: { scale: -1 } },
+    { t: "Doesn't matter, the mission and the people matter more", w: { tradition: 2, comfort: -1 } },
+  ] },
+  { topic: "Boot camp", q: "Which boot camp would you choose?", options: [
+    { t: "The longest and hardest one, no shortcuts", w: { physical: 2, tradition: 2, comfort: -2 } },
+    { t: "Tough, but standard", w: { physical: 1, tradition: 1 } },
+    { t: "Swimming, seamanship and survival training", w: { sea: 2, physical: 1 } },
+    { t: "Shorter, then straight into technical school", w: { tech: 2, physical: -1, comfort: 1 } },
+  ] },
+  { topic: "Team", q: "What's your ideal team?", options: [
+    { t: "A big unit with hundreds of people", w: { scale: 2 } },
+    { t: "A crew of a couple dozen", w: { scale: 0, sea: 1 } },
+    { t: "A small team of specialists", w: { scale: -1, tech: 1 } },
+    { t: "A four-person fire team, tight like family", w: { combat: 1, physical: 1 } },
+  ] },
+  { topic: "Living", q: "Pick a place to live.", options: [
+    { t: "A bunk on a ship with my crew", w: { sea: 2, comfort: -1 } },
+    { t: "Out in the field sometimes, roughing it", w: { land: 2, comfort: -2 } },
+    { t: "A nice dorm, a good gym and decent food", w: { comfort: 2 } },
+    { t: "A small station in a coastal town", w: { homeland: 1, sea: 1, scale: -1 } },
+  ] },
+  { topic: "Pace", q: "Pick a pace of life.", options: [
+    { t: "Ready to deploy anywhere on short notice", w: { travel: 2, combat: 1 } },
+    { t: "Long missions, then long breaks", w: { sea: 1, travel: 1 } },
+    { t: "A steady, predictable schedule", w: { comfort: 1, travel: -1 } },
+    { t: "On call for emergencies close to home", w: { homeland: 2, travel: -1 } },
+  ] },
+  { topic: "Pressure", q: "A storm hits and a boat is sinking offshore. Where do you want to be?", options: [
+    { t: "In the helicopter heading out to pull people out", w: { homeland: 2, sea: 1, air: 1 } },
+    { t: "On a ship nearby, turning to help", w: { sea: 2 } },
+    { t: "Coordinating everything from the operations center", w: { tech: 1, combat: -1 } },
+    { t: "Honestly, I'd rather be the one storming a beach", w: { combat: 2, sea: 1, land: 1 } },
+  ] },
+  { topic: "Future", q: "What do you want to do after you get out?", options: [
+    { t: "A tech career: IT, cyber or engineering", w: { tech: 2 } },
+    { t: "Police, firefighting or EMS", w: { homeland: 2, physical: 1 } },
+    { t: "A skilled trade: mechanic, electrician, welder", w: { tech: 1, comfort: -1 } },
+    { t: "Aviation: airline pilot or aircraft mechanic", w: { air: 2 } },
+    { t: "Leading people and running things", w: { tradition: 1, combat: 1 } },
+  ] },
+  { topic: "Games", q: "Which kind of game do you pick?", options: [
+    { t: "Squad-based shooter", w: { combat: 1, land: 1 } },
+    { t: "Flight sim", w: { air: 2 } },
+    { t: "Strategy, building something huge", w: { scale: 1, tech: 1 } },
+    { t: "Survival or exploration", w: { physical: 1, comfort: -1 } },
+    { t: "Space sim", w: { space: 2 } },
+  ] },
+  { topic: "Learning", q: "How do you learn best?", options: [
+    { t: "Doing it physically, over and over", w: { physical: 1, tech: -1 } },
+    { t: "A mix of classroom and hands-on", w: { tech: 1 } },
+    { t: "Months of deep technical study", w: { tech: 2, comfort: 1 } },
+    { t: "Figuring it out under pressure in the moment", w: { combat: 1, physical: 1 } },
+  ] },
+  { topic: "Authority", q: "Someone in charge gives you an order you think is dumb. You...", options: [
+    { t: "Do it. You trust the chain of command", w: { tradition: 2 } },
+    { t: "Do it, then bring it up later", w: { tradition: 1 } },
+    { t: "Ask why first", w: { tradition: -1, tech: 1 } },
+    { t: "Find a smarter way to get it done", w: { tradition: -2 } },
+  ] },
+  { topic: "Weather", q: "Several days outside in cold rain:", options: [
+    { t: "Bring it on", w: { physical: 2, comfort: -2, land: 1 } },
+    { t: "Fine for a day or two", w: { physical: 1, comfort: -1 } },
+    { t: "I'd rather be inside", w: { comfort: 1, physical: -1 } },
+    { t: "Give me a climate-controlled room, please", w: { comfort: 2, space: 1 } },
+  ] },
+  { topic: "Aircraft", q: "How do you feel about aircraft?", options: [
+    { t: "I want to fly them", w: { air: 2 } },
+    { t: "I want to fix and maintain them", w: { air: 1, tech: 1 } },
+    { t: "Cool, but not really my thing", w: { air: -1 } },
+    { t: "I'd rather be on a boat", w: { sea: 1, air: -1 } },
+  ] },
+  { topic: "Space", q: "How interested are you in space?", options: [
+    { t: "Obsessed", w: { space: 2 } },
+    { t: "Pretty interested", w: { space: 1 } },
+    { t: "Meh", w: { space: -1 } },
+    { t: "I'd rather have my boots in the dirt", w: { space: -2, land: 1 } },
+  ] },
+  { topic: "Water", q: "Could you see yourself training to jump into rough water to save someone?", options: [
+    { t: "Yes, I'd train for that", w: { sea: 2, physical: 1, homeland: 1 } },
+    { t: "I can swim, but rough water? Not really", w: { sea: -1 } },
+    { t: "I'm not a swimmer", w: { sea: -2 } },
+  ] },
+  { topic: "Motivation", q: "What motivates you most?", options: [
+    { t: "Testing myself against the hardest challenge", w: { physical: 2, tradition: 1 } },
+    { t: "Protecting my community", w: { homeland: 2 } },
+    { t: "Learning valuable skills", w: { tech: 1, comfort: 1 } },
+    { t: "Seeing the world", w: { travel: 2 } },
+    { t: "Being part of something brand new", w: { space: 1, scale: -2 } },
+  ] },
+  { topic: "Identity", q: "How much does your unit's reputation matter to you?", options: [
+    { t: "Everything. I want that title for life", w: { tradition: 2, combat: 1 } },
+    { t: "It matters, but the job matters more", w: { tech: 1 } },
+    { t: "I just want a good job and good people", w: { comfort: 1, tradition: -1 } },
+  ] },
+  { topic: "Law", q: "Would you like a job enforcing laws, like boarding ships to search for drugs?", options: [
+    { t: "Yes, that sounds awesome", w: { homeland: 2, sea: 1 } },
+    { t: "Maybe", w: { homeland: 1 } },
+    { t: "Not really", w: { homeland: -1 } },
+  ] },
+  { topic: "Focus", q: "A 12-hour shift watching screens and tracking data sounds...", options: [
+    { t: "Peaceful, honestly", w: { tech: 1, space: 1, physical: -1 } },
+    { t: "Fine once in a while", w: {} },
+    { t: "Like torture. Let me move around", w: { physical: 2, tech: -1 } },
+  ] },
+  { topic: "Family", q: "How important is living near family?", options: [
+    { t: "Very important", w: { travel: -2, homeland: 1 } },
+    { t: "Somewhat", w: { travel: -1 } },
+    { t: "Not very", w: { travel: 1 } },
+    { t: "I want to move far away", w: { travel: 2 } },
+  ] },
+  // Service type questions also score components (c): active duty, reserve, guard.
+  { topic: "Service type", q: "How big a part of your life do you want the military to be?", options: [
+    { t: "All of it. It's my full-time job", w: {}, c: { active: 2 } },
+    { t: "A serious part-time commitment", w: {}, c: { reserve: 1, guard: 1 } },
+    { t: "A smaller part, next to a civilian career or school", w: {}, c: { reserve: 2, guard: 1 } },
+  ] },
+  { topic: "Service type", q: "What are your school or work plans for the next few years?", options: [
+    { t: "Military first. School can come later, or during", w: {}, c: { active: 2 } },
+    { t: "Go to college full time", w: {}, c: { guard: 2, reserve: 2 } },
+    { t: "Keep or start a civilian job", w: {}, c: { reserve: 2, guard: 1 } },
+  ] },
+  { topic: "Service type", q: "Floods, wildfires or storms hit your state. Would you want to be called up to help?", options: [
+    { t: "Yes. Helping my own state matters a lot", w: { homeland: 1 }, c: { guard: 3 } },
+    { t: "Sure, sometimes", w: {}, c: { guard: 1, reserve: 1 } },
+    { t: "I'd rather focus on federal or overseas missions", w: { homeland: -1 }, c: { active: 1, reserve: 1 } },
+  ] },
+  { topic: "Service type", q: "Moving to a new base every few years sounds...", options: [
+    { t: "Exciting", w: { travel: 1 }, c: { active: 2 } },
+    { t: "Like something I could handle", w: {}, c: { active: 1 } },
+    { t: "Like a no. I'd rather keep living where I live", w: { travel: -1 }, c: { guard: 2, reserve: 2 } },
+  ] },
+  { topic: "Service type", q: "Which benefit matters most to you?", options: [
+    { t: "A steady full-time paycheck, housing and healthcare now", w: {}, c: { active: 2 } },
+    { t: "Help paying for college while I live a normal life", w: {}, c: { guard: 2, reserve: 1 } },
+    { t: "Extra income and experience on the side", w: {}, c: { reserve: 2, guard: 1 } },
+  ] },
+];
+
+const COMPONENTS = {
+  active: {
+    name: "Active Duty",
+    about: "Full-time. The military is your job: you live on or near a base, get a full-time paycheck, housing and healthcare, and usually move to a new duty station every few years.",
+  },
+  reserve: {
+    name: "Reserve",
+    about: "Part-time and federal. You typically train one weekend a month and two weeks a year, keep a civilian job or go to school, and can be called up to support active-duty forces.",
+  },
+  guard: {
+    name: "National Guard",
+    about: "Part-time, with a state mission too. The usual schedule is the same as the Reserve, but your governor can call you up for disasters and emergencies in your state, and you can also be mobilized federally. Only the Army and Air Force have a National Guard.",
+  },
+};
+
+const COMPONENT_ORDER = ["active", "reserve", "guard"];
+
+const TRAIT_IDS = Object.keys(TRAITS);
+
+// The user's profile is the average nudge per trait. Traits answered more
+// often count more, up to a cap, so one stray answer can't dominate.
+function profile(answers) {
+  const sum = {}, n = {};
+  answers.forEach((idx, i) => {
+    if (idx == null) return;
+    for (const [t, v] of Object.entries(QUESTIONS[i].options[idx].w)) {
+      sum[t] = (sum[t] || 0) + v;
+      n[t] = (n[t] || 0) + 1;
+    }
+  });
+  const out = {};
+  for (const t of TRAIT_IDS) {
+    if (n[t]) out[t] = { value: sum[t] / n[t], weight: Math.min(n[t], 4) };
+  }
+  return out;
+}
+
+// Cosine similarity between the user's leanings and the branch profile, over
+// the traits the user actually answered. Comparing direction rather than
+// distance keeps middle-of-the-road profiles from winning by default.
+function match(user, branch) {
+  let dot = 0, uu = 0, pp = 0;
+  for (const [t, u] of Object.entries(user)) {
+    const p = BRANCHES[branch].traits[t];
+    dot += u.weight * u.value * p;
+    uu += u.weight * u.value * u.value;
+    pp += u.weight * p * p;
+  }
+  return uu && pp ? dot / Math.sqrt(uu * pp) : 0;
+}
+
+function score(answers) {
+  const user = profile(answers);
+  return ORDER
+    .map((b) => ({ id: b, raw: match(user, b) }))
+    .map((r) => ({ ...r, pct: Math.round(((r.raw + 1) / 2) * 100) }))
+    .sort((a, b) => b.raw - a.raw || ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
+}
+
+const COMPONENT_MAX = Object.fromEntries(COMPONENT_ORDER.map((k) => [
+  k,
+  QUESTIONS.reduce((sum, q) => sum + Math.max(0, ...q.options.map((o) => (o.c && o.c[k]) || 0)), 0),
+]));
+
+function componentScore(answers) {
+  const raw = Object.fromEntries(COMPONENT_ORDER.map((k) => [k, 0]));
+  answers.forEach((idx, i) => {
+    const c = QUESTIONS[i].options[idx].c || {};
+    for (const k of COMPONENT_ORDER) raw[k] += c[k] || 0;
+  });
+  return COMPONENT_ORDER
+    .map((k) => ({ id: k, pct: Math.round((raw[k] / COMPONENT_MAX[k]) * 100) }))
+    .sort((a, b) => b.pct - a.pct || COMPONENT_ORDER.indexOf(a.id) - COMPONENT_ORDER.indexOf(b.id));
+}
+
+// Turns a branch and component into a real service option. Only the Army and
+// Air Force have a National Guard, and the Space Force has no separate
+// Reserve or Guard, so those combinations come with a note instead.
+function serviceOption(branch, component) {
+  const name = BRANCHES[branch].name;
+  if (component === "active") return { title: `Active Duty ${name}` };
+  if (branch === "sf") {
+    return {
+      title: "Space Force (part-time)",
+      note: "The Space Force has no separate Reserve or National Guard. A law passed in late 2023 lets it offer part-time service inside the Space Force itself, but spots are limited, so ask a recruiter. The Air Force Reserve and Air National Guard are the closest part-time alternatives.",
+    };
+  }
+  if (component === "reserve") return { title: `${name} Reserve` };
+  if (branch === "army") return { title: "Army National Guard" };
+  if (branch === "af") return { title: "Air National Guard" };
+  return {
+    title: `${name} Reserve`,
+    note: `The ${name} doesn't have a National Guard, so its Reserve is the closest part-time option. If serving your own state matters most to you, look at the Army National Guard or Air National Guard too.`,
+  };
+}
+
+function phrase(t, v) {
+  return v > 0 ? TRAITS[t].pos : TRAITS[t].neg;
+}
+
+function capitalize(s) {
+  return s[0].toUpperCase() + s.slice(1);
+}
+
+// Strong traits the user shares with the branch, strongest first.
+function fits(user, branch) {
+  const p = BRANCHES[branch].traits;
+  return Object.entries(user)
+    .filter(([t, u]) => Math.abs(u.value) >= 0.75 && Math.abs(p[t]) >= 1 && Math.sign(u.value) === Math.sign(p[t]))
+    .sort((a, b) => b[1].weight * Math.abs(b[1].value) - a[1].weight * Math.abs(a[1].value))
+    .map(([t, u]) => phrase(t, u.value));
+}
+
+// Places where the branch pulls the opposite way from the user.
+function clashes(user, branch) {
+  const p = BRANCHES[branch].traits;
+  return Object.entries(user)
+    .map(([t, u]) => ({ t, u, gap: Math.abs(u.value - p[t]) }))
+    .filter(({ t, u, gap }) => gap >= 2 && Math.abs(p[t]) >= 1 && Math.abs(u.value) >= 0.5 && Math.sign(u.value) !== Math.sign(p[t]))
+    .sort((a, b) => b.gap * b.u.weight - a.gap * a.u.weight)
+    .map(({ t, u }) => `The ${BRANCHES[branch].name} leans toward ${phrase(t, BRANCHES[branch].traits[t])}, but you leaned toward ${phrase(t, u.value)}.`);
+}
+
+const state = { step: -1, answers: [] };
+const app = document.getElementById("app");
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") node.className = v;
+    else if (k === "style") node.style.cssText = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of children.flat()) {
+    if (c != null) node.append(c.nodeType ? c : document.createTextNode(c));
+  }
+  return node;
+}
+
+function render() {
+  app.replaceChildren();
+  if (state.step < 0) renderIntro();
+  else if (state.step < QUESTIONS.length) renderQuestion();
+  else renderResults();
+  window.scrollTo({ top: 0 });
+}
+
+function renderIntro() {
+  app.append(el("div", { class: "card fade-in" },
+    el("div", { class: "eyebrow" }, "Branch Finder"),
+    el("h1", {}, "Which military branch fits you?"),
+    el("p", { class: "muted" },
+      `${QUESTIONS.length} questions about how you like to live, work, train and think. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. The last few questions decide between Active Duty, the Reserve and the National Guard.`),
+    el("div", { class: "chips branch-strip" },
+      ORDER.map((b) => el("span", { class: "chip" },
+        el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name))),
+    el("button", { class: "primary", onclick: () => { state.step = 0; render(); } }, "Start the quiz"),
+  ));
+}
+
+function renderQuestion() {
+  const i = state.step;
+  const q = QUESTIONS[i];
+  const chosen = state.answers[i];
+
+  const options = q.options.map((o, idx) => el("button", {
+    class: "option" + (chosen === idx ? " selected" : ""),
+    "aria-pressed": String(chosen === idx),
+    onclick: () => choose(idx),
+  }, el("span", { class: "key" }, String(idx + 1)), el("span", {}, o.t)));
+
+  app.append(el("div", { class: "card fade-in" },
+    el("div", { class: "progress-row" },
+      el("span", {}, `Question ${i + 1} / ${QUESTIONS.length}`),
+      el("span", {}, q.topic)),
+    el("div", { class: "progress" }, el("div", { style: `width:${(i / QUESTIONS.length) * 100}%` })),
+    el("h2", {}, q.q),
+    el("div", { class: "options", role: "group", "aria-label": q.q }, options),
+    el("div", { class: "nav" },
+      el("button", { onclick: back }, i === 0 ? "Intro" : "Back"),
+      el("button", { class: "primary", disabled: chosen == null, onclick: next },
+        i === QUESTIONS.length - 1 ? "See my results" : "Next")),
+  ));
+}
+
+let advanceTimer = 0;
+
+function choose(idx) {
+  state.answers[state.step] = idx;
+  render();
+  // Auto-advance after a short beat so the selection is visible.
+  clearTimeout(advanceTimer);
+  const step = state.step;
+  advanceTimer = setTimeout(() => { if (state.step === step) next(); }, 220);
+}
+
+function next() {
+  if (state.answers[state.step] == null) return;
+  state.step += 1;
+  render();
+}
+
+function back() {
+  clearTimeout(advanceTimer);
+  state.step -= 1;
+  render();
+}
+
+function renderResults() {
+  const ranked = score(state.answers);
+  const user = profile(state.answers);
+  const top = ranked[0];
+  const second = ranked[1];
+  const info = BRANCHES[top.id];
+  const why = fits(user, top.id).slice(0, 5);
+  const headsUp = clashes(user, top.id).slice(0, 3);
+  const components = componentScore(state.answers);
+  const option = serviceOption(top.id, components[0].id);
+  const strongest = Object.entries(user)
+    .filter(([, u]) => Math.abs(u.value) >= 1)
+    .sort((a, b) => b[1].weight * Math.abs(b[1].value) - a[1].weight * Math.abs(a[1].value))
+    .slice(0, 6);
+
+  const bars = ranked.map((r) => {
+    const fill = el("div", { style: `background:${BRANCHES[r.id].color}` });
+    requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = r.pct + "%"; }));
+    return el("div", { class: "bar-row" },
+      el("span", {}, BRANCHES[r.id].name),
+      el("div", { class: "bar", role: "img", "aria-label": `${BRANCHES[r.id].name} ${r.pct}%` }, fill),
+      el("span", { class: "num" }, r.pct + "%"));
+  });
+
+  // Every branch within 10 points of the top is shown as a close match;
+  // otherwise just the runner-up.
+  const closeOnes = ranked.slice(1).filter((r) => top.pct - r.pct <= 10);
+  const others = closeOnes.length ? closeOnes : [second];
+  const otherCards = others.map((r) => {
+    const b = BRANCHES[r.id];
+    const reasons = fits(user, r.id).slice(0, 2);
+    return el("div", { class: "runner-up", style: `border-left:4px solid ${b.color}` },
+      el("strong", {}, `${b.name} (${r.pct}%)`),
+      el("p", { class: "muted", style: "margin:6px 0 0" }, b.tagline),
+      reasons.length ? el("p", { style: "margin:8px 0 0; font-size:14px" },
+        `Shares your lean toward ${reasons.join(" and ")}.`) : null);
+  });
+
+  app.append(el("div", { class: "card fade-in" },
+    el("div", { class: "eyebrow" }, "Your best match"),
+    el("div", { class: "result-hero", style: `--hero:${info.color}` },
+      el("h1", {}, info.name),
+      el("div", { class: "pct" }, `${top.pct}% MATCH`),
+      el("p", { style: "margin-top:12px" }, info.tagline),
+      el("p", { style: "margin:0" }, "Best way to serve: ", el("strong", {}, option.title))),
+    el("p", {}, info.about),
+
+    strongest.length ? [
+      el("div", { class: "section-title" }, "Your profile"),
+      el("div", { class: "chips" }, strongest.map(([t, u]) => el("span", { class: "chip" }, capitalize(phrase(t, u.value))))),
+    ] : null,
+
+    why.length ? [
+      el("div", { class: "section-title" }, "Why you matched"),
+      el("ul", { class: "list good" }, why.map((w) =>
+        el("li", {}, el("span", { class: "mark" }, "+"), el("span", {}, `You lean toward ${w}, and so does the ${info.name}.`)))),
+    ] : null,
+
+    headsUp.length ? [
+      el("div", { class: "section-title" }, "Heads up"),
+      el("ul", { class: "list warn" }, headsUp.map((h) =>
+        el("li", {}, el("span", { class: "mark" }, "!"), el("span", {}, h)))),
+    ] : null,
+
+    el("div", { class: "section-title" }, "All branches"),
+    el("div", { class: "bars" }, bars),
+
+    el("div", { class: "section-title" }, closeOnes.length ? "Also a close match" : "Runner-up"),
+    closeOnes.length ? el("p", { class: "muted", style: "font-size:14px" },
+      `${closeOnes.length === 1 ? "This branch is" : "These branches are"} within 10 points of your top match, so ${closeOnes.length === 1 ? "it's" : "they're"} worth a look too.`) : null,
+    el("div", { style: "display:grid; gap:10px" }, otherCards),
+
+    el("div", { class: "section-title" }, "Service type"),
+    el("div", { class: "bars" }, components.map((r) => {
+      const fill = el("div", { style: "background:var(--accent)" });
+      requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = r.pct + "%"; }));
+      return el("div", { class: "bar-row" },
+        el("span", {}, COMPONENTS[r.id].name),
+        el("div", { class: "bar", role: "img", "aria-label": `${COMPONENTS[r.id].name} ${r.pct}%` }, fill),
+        el("span", { class: "num" }, r.pct + "%"));
+    })),
+    el("p", { style: "margin:14px 0 0" }, el("strong", {}, COMPONENTS[components[0].id].name + ": "), COMPONENTS[components[0].id].about),
+    option.note ? el("div", { class: "note", style: "margin-top:12px" }, option.note) : null,
+
+    el("div", { class: "actions" },
+      el("button", { class: "primary", onclick: restart }, "Take it again"),
+      el("button", { onclick: copyResult }, "Copy my result")),
+  ));
+}
+
+function restart() {
+  state.step = -1;
+  state.answers = [];
+  render();
+}
+
+async function copyResult(e) {
+  const ranked = score(state.answers);
+  const option = serviceOption(ranked[0].id, componentScore(state.answers)[0].id);
+  const text = `My Branch Finder result: ${option.title}\n` +
+    ranked.map((r) => `${BRANCHES[r.id].name}: ${r.pct}%`).join("\n");
+  const btn = e.currentTarget;
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = "Copied!";
+  } catch {
+    btn.textContent = "Couldn't copy";
+  }
+  setTimeout(() => { btn.textContent = "Copy my result"; }, 1500);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (state.step < 0 || state.step >= QUESTIONS.length) return;
+  const n = Number(e.key);
+  if (n >= 1 && n <= QUESTIONS[state.step].options.length) choose(n - 1);
+  else if (e.key === "ArrowLeft") { if (state.step > 0) back(); }
+  else if (e.key === "ArrowRight" || e.key === "Enter") next();
+});
+
+// Exposed for automated checks.
+window.branchQuiz = { QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, serviceOption, state, render };
+
+render();
+</script>
+</body>
+</html>
