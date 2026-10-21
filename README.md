@@ -1,6 +1,6 @@
 # Ranked Bingo
 
-A quiz that matches you to the U.S. military branch that fits you best (Army, Marine Corps, Navy, Air Force, Space Force or Coast Guard), to enlisted or officer, and to Active Duty, the Reserve or the National Guard.
+A quiz that matches you to the U.S. military branch that fits you best (Army, Marine Corps, Navy, Air Force, Space Force or Coast Guard), your top jobs in it, enlisted or officer, and Active Duty, the Reserve or the National Guard.
 
 **Take it:** https://samuelarther.github.io/rankedbingo/
 
@@ -8,10 +8,11 @@ A quiz that matches you to the U.S. military branch that fits you best (Army, Ma
 
 ## How it works
 
-- 35 questions, most of them indirect: weekend trips, game picks, how you handle an order you disagree with, boot camp style, what you want after you get out.
+- 41 questions, most of them indirect: weekend trips, game picks, how you handle an order you disagree with, boot camp style, what you want after you get out.
 - No answer points straight at a branch. Each one nudges up to three of 12 traits: sea, land, air, space, physical, tech, discipline, travel, home missions, combat, organization size and comfort.
 - Each branch has a profile on the same traits. Your match is the cosine similarity between your leanings and each branch profile, so balanced profiles don't win by default.
 - Results show your top branch, scores for all six, your trait profile, why you matched, where you don't fit, and any other branch within 10 points.
+- Six job-interest questions (medicine, construction, machines, cyber, intel, law enforcement, aviation, special operations and more) pick your top 3 roles from about 100 jobs across the six branches, such as "Navy · Enlisted · Seabee: Builder". Close-match branches show their best role too.
 - Five role questions score enlisted vs officer, and five service-type questions score Active Duty, Reserve and National Guard.
 - The final pick is always a real option, like "Air National Guard, Enlisted". Only the Army and Air Force have a National Guard, and the Space Force has no separate Reserve, so those cases fall back to the closest option with a note.
 

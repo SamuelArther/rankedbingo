@@ -137,6 +137,11 @@
   .bar > div { height: 100%; width: 0; border-radius: 999px; transition: width 0.8s cubic-bezier(.2,.8,.2,1); }
   .bar-row .num { font-family: var(--mono); text-align: right; color: var(--muted); }
 
+  .jobs { display: grid; gap: 10px; }
+  .job { background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--hero); border-radius: 10px; padding: 14px 16px; }
+  .job-path { font: 600 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--hero); margin-bottom: 4px; }
+  .job-name { font-size: 18px; }
+
   .runner-up { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
 
   .note { background: rgba(159, 211, 107, 0.07); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
@@ -409,6 +414,47 @@ const QUESTIONS = [
     { t: "Not very", w: { travel: 1 } },
     { t: "I want to move far away", w: { travel: 2 } },
   ] },
+  // Job interest questions score interests (i), used to pick specific roles.
+  { topic: "Job interests", q: "Which of these would you most want to learn?", options: [
+    { t: "Emergency medicine", w: { homeland: 1 }, i: { medical: 2 } },
+    { t: "Construction and heavy equipment", w: {}, i: { build: 2 } },
+    { t: "Fixing engines, aircraft and machines", w: { tech: 1 }, i: { mechanic: 2 } },
+    { t: "Hacking and defending networks", w: { tech: 2 }, i: { cyber: 2 } },
+    { t: "Flying or crewing aircraft", w: { air: 1 }, i: { aviation: 2 } },
+  ] },
+  { topic: "Job interests", q: "Pick a civilian job to try for a day.", options: [
+    { t: "Paramedic", w: {}, i: { medical: 2 } },
+    { t: "Police officer", w: { homeland: 1 }, i: { law: 2 } },
+    { t: "Electrician or builder", w: {}, i: { build: 2 } },
+    { t: "Air traffic controller", w: {}, i: { comms: 1, aviation: 1 } },
+    { t: "Detective or analyst", w: {}, i: { intel: 2 } },
+  ] },
+  { topic: "Job interests", q: "Which would feel the most rewarding?", options: [
+    { t: "Keeping a hurt person alive", w: {}, i: { medical: 2 } },
+    { t: "Catching someone breaking the law", w: {}, i: { law: 2 } },
+    { t: "Cracking a code nobody else could", w: { tech: 1 }, i: { intel: 1, cyber: 1 } },
+    { t: "Getting supplies to people on time, every time", w: {}, i: { logistics: 2 } },
+    { t: "Being first through the door", w: { combat: 1 }, i: { infantry: 2 } },
+  ] },
+  { topic: "Job interests", q: "Pick a tool.", options: [
+    { t: "A wrench", w: {}, i: { mechanic: 2 } },
+    { t: "A rifle", w: { combat: 1 }, i: { infantry: 1, weapons: 1 } },
+    { t: "A laptop", w: { tech: 1 }, i: { cyber: 2 } },
+    { t: "A radio and a map", w: {}, i: { comms: 2 } },
+    { t: "A medical kit", w: {}, i: { medical: 2 } },
+  ] },
+  { topic: "Job interests", q: "Pick a mission for your team.", options: [
+    { t: "Run the radar and radios that keep everyone connected", w: {}, i: { comms: 2 } },
+    { t: "Move the heavy equipment and supplies", w: {}, i: { logistics: 2 } },
+    { t: "Keep the weapon systems ready to go", w: {}, i: { weapons: 2 } },
+    { t: "Gather intel on what's out there", w: {}, i: { intel: 2 } },
+    { t: "Lead the patrol", w: { combat: 1 }, i: { infantry: 2 } },
+  ] },
+  { topic: "Job interests", q: "Special operations selection, where most people wash out:", options: [
+    { t: "That's my goal", w: { physical: 2 }, i: { elite: 4 } },
+    { t: "Maybe someday", w: { physical: 1 }, i: { elite: 2 } },
+    { t: "No thanks", w: {} },
+  ] },
   // Role questions also score tracks (k): enlisted or officer.
   { topic: "Role", q: "Do you plan to get a four-year college degree?", options: [
     { t: "Yes, before I join", w: {}, k: { officer: 2 } },
@@ -492,6 +538,192 @@ const TRACKS = {
 };
 
 const TRACK_ORDER = ["enlisted", "officer"];
+
+const INTERESTS = {
+  medical: "medicine",
+  build: "building and construction",
+  mechanic: "machines and engines",
+  cyber: "cyber and networks",
+  intel: "intelligence work",
+  law: "law enforcement",
+  aviation: "aviation",
+  elite: "special operations",
+  logistics: "logistics",
+  comms: "communications and operations",
+  weapons: "weapon systems",
+  infantry: "front-line combat",
+};
+
+// Representative jobs per branch, using plain names rather than official
+// codes. Each is tagged with the interests it fits (1 or 2).
+const E = "enlisted", O = "officer";
+const JOBS = {
+  army: [
+    { n: "Infantryman", tr: E, i: { infantry: 2, weapons: 1 }, d: "Patrols, raids and holding ground on foot. The core of the Army's fighting force." },
+    { n: "Combat Medic", tr: E, i: { medical: 2 }, d: "Treats wounded soldiers in the field and runs aid stations." },
+    { n: "Combat Engineer", tr: E, i: { build: 2, weapons: 1 }, d: "Builds bridges and obstacles, clears routes and handles explosives." },
+    { n: "Helicopter Repairer", tr: E, i: { mechanic: 2, aviation: 1 }, d: "Keeps Black Hawks and other helicopters flying." },
+    { n: "Cyber Operations Specialist", tr: E, i: { cyber: 2, intel: 1 }, d: "Defends Army networks and conducts cyber operations." },
+    { n: "Intelligence Analyst", tr: E, i: { intel: 2 }, d: "Pieces together information about threats and briefs commanders." },
+    { n: "Military Police", tr: E, i: { law: 2, weapons: 1 }, d: "Law enforcement and security on bases and in the field." },
+    { n: "Motor Transport Operator", tr: E, i: { logistics: 2, mechanic: 1 }, d: "Drives heavy trucks that move troops, fuel and supplies." },
+    { n: "Signal Support Specialist", tr: E, i: { comms: 2, cyber: 1 }, d: "Sets up and runs radios and communication networks." },
+    { n: "Field Artillery Specialist", tr: E, i: { weapons: 2, infantry: 1 }, d: "Crews howitzers and rocket systems." },
+    { n: "Special Forces (Green Beret)", tr: E, i: { elite: 2, infantry: 1 }, d: "Small elite teams for special missions and training partner forces. Very tough selection." },
+    { n: "Infantry Officer", tr: O, i: { infantry: 2, weapons: 1 }, d: "Leads infantry platoons and companies." },
+    { n: "Army Aviator", tr: O, i: { aviation: 2 }, d: "Flies helicopters like the Black Hawk and Apache. The Army also trains warrant officer pilots." },
+    { n: "Army Nurse or Medical Officer", tr: O, i: { medical: 2 }, d: "Runs care in Army hospitals and field units." },
+    { n: "Military Intelligence Officer", tr: O, i: { intel: 2 }, d: "Leads intelligence teams and advises commanders." },
+    { n: "Engineer Officer", tr: O, i: { build: 2 }, d: "Leads engineer units that build, breach and clear." },
+    { n: "Cyber Officer", tr: O, i: { cyber: 2 }, d: "Leads cyber operations teams." },
+    { n: "Logistics Officer", tr: O, i: { logistics: 2 }, d: "Keeps units supplied, fueled and moving." },
+    { n: "Military Police Officer", tr: O, i: { law: 2 }, d: "Leads military police units." },
+    { n: "Special Forces Officer", tr: O, i: { elite: 2, infantry: 1 }, d: "Leads a Green Beret team." },
+  ],
+  usmc: [
+    { n: "Rifleman", tr: E, i: { infantry: 2, weapons: 1 }, d: "The Marine infantryman: patrols, raids and amphibious assaults." },
+    { n: "Combat Engineer", tr: E, i: { build: 2, weapons: 1 }, d: "Builds, breaches and clears routes for Marine units." },
+    { n: "Aircraft Maintenance Marine", tr: E, i: { mechanic: 2, aviation: 1 }, d: "Keeps Marine jets, helicopters and Ospreys flying." },
+    { n: "Field Radio Operator", tr: E, i: { comms: 2 }, d: "Keeps Marine units talking to each other." },
+    { n: "Intelligence Specialist", tr: E, i: { intel: 2 }, d: "Analyzes threats and briefs Marine units." },
+    { n: "Military Police", tr: E, i: { law: 2, weapons: 1 }, d: "Law enforcement and security for Marine bases and units." },
+    { n: "Motor Vehicle Operator", tr: E, i: { logistics: 2, mechanic: 1 }, d: "Drives the trucks that move Marines and supplies." },
+    { n: "Cyberspace Operations Marine", tr: E, i: { cyber: 2 }, d: "Defends Marine Corps networks." },
+    { n: "Artillery Marine", tr: E, i: { weapons: 2 }, d: "Crews cannons and rocket systems." },
+    { n: "Reconnaissance Marine", tr: E, i: { elite: 2, infantry: 1 }, d: "Small teams scouting ahead of the force. Some later try out for Marine Raiders." },
+    { n: "Infantry Officer", tr: O, i: { infantry: 2, weapons: 1 }, d: "Leads Marine rifle platoons." },
+    { n: "Marine Pilot", tr: O, i: { aviation: 2 }, d: "Flies jets, helicopters or Ospreys in support of Marines on the ground." },
+    { n: "Intelligence Officer", tr: O, i: { intel: 2 }, d: "Leads intelligence teams." },
+    { n: "Logistics Officer", tr: O, i: { logistics: 2 }, d: "Keeps Marine units supplied and moving." },
+    { n: "Communications Officer", tr: O, i: { comms: 2, cyber: 1 }, d: "Runs a unit's communication networks." },
+    { n: "Combat Engineer Officer", tr: O, i: { build: 2 }, d: "Leads combat engineer units." },
+    { n: "Military Police Officer", tr: O, i: { law: 2 }, d: "Leads Marine military police." },
+  ],
+  navy: [
+    { n: "Seabee: Builder", tr: E, i: { build: 2 }, d: "Navy construction crews that build bases, roads and bridges around the world." },
+    { n: "Seabee: Equipment Operator", tr: E, i: { build: 1, logistics: 1, mechanic: 1 }, d: "Runs bulldozers, cranes and heavy equipment for Seabee projects." },
+    { n: "Seabee: Construction Electrician", tr: E, i: { build: 2, mechanic: 1 }, d: "Wires and powers Seabee construction projects." },
+    { n: "Hospital Corpsman", tr: E, i: { medical: 2 }, d: "Navy medic. Some serve with Marine units as their field medics." },
+    { n: "Aviation Machinist's Mate", tr: E, i: { mechanic: 2, aviation: 1 }, d: "Maintains engines on Navy aircraft." },
+    { n: "Nuclear Field Technician", tr: E, i: { mechanic: 2, intel: 1 }, d: "Runs the reactors on carriers and submarines. One of the hardest schools in the military." },
+    { n: "Cryptologic Technician (Networks)", tr: E, i: { cyber: 2, intel: 1 }, d: "Cyber operations and network analysis." },
+    { n: "Intelligence Specialist", tr: E, i: { intel: 2 }, d: "Analyzes intelligence for ships and aircraft squadrons." },
+    { n: "Master-at-Arms", tr: E, i: { law: 2, weapons: 1 }, d: "Navy law enforcement and security." },
+    { n: "Navy SEAL", tr: E, i: { elite: 2, infantry: 1 }, d: "Special operations on sea, air and land. Extremely tough selection." },
+    { n: "Navy Diver", tr: E, i: { elite: 1, mechanic: 1, build: 1 }, d: "Underwater salvage, repair and construction." },
+    { n: "Naval Aircrewman (Helicopter)", tr: E, i: { aviation: 2, medical: 1 }, d: "Helicopter crew, including Navy rescue swimmers." },
+    { n: "Operations Specialist", tr: E, i: { comms: 2, intel: 1 }, d: "Runs radar and tracks what's around the ship." },
+    { n: "Logistics Specialist", tr: E, i: { logistics: 2 }, d: "Manages supplies and parts for ships and squadrons." },
+    { n: "Gunner's Mate", tr: E, i: { weapons: 2, mechanic: 1 }, d: "Maintains and operates shipboard weapons." },
+    { n: "Naval Aviator", tr: O, i: { aviation: 2 }, d: "Flies jets or helicopters, including off aircraft carriers." },
+    { n: "Surface Warfare Officer", tr: O, i: { comms: 1, weapons: 1, logistics: 1 }, d: "Drives and leads crews on Navy ships." },
+    { n: "Submarine Officer", tr: O, i: { mechanic: 2, intel: 1 }, d: "Leads nuclear-powered submarine crews." },
+    { n: "Navy Nurse or Doctor", tr: O, i: { medical: 2 }, d: "Medical care on ships, at Navy hospitals and with Marines." },
+    { n: "Intelligence Officer", tr: O, i: { intel: 2 }, d: "Leads intelligence work for the fleet." },
+    { n: "Civil Engineer Corps Officer", tr: O, i: { build: 2 }, d: "Leads Seabee units and Navy construction projects." },
+    { n: "SEAL Officer", tr: O, i: { elite: 2, infantry: 1 }, d: "Leads a SEAL platoon." },
+    { n: "Information Warfare Officer", tr: O, i: { cyber: 2, intel: 1 }, d: "Cyber, signals and electronic warfare." },
+    { n: "Supply Corps Officer", tr: O, i: { logistics: 2 }, d: "Runs supply and logistics for ships and bases." },
+  ],
+  af: [
+    { n: "Pararescue (PJ)", tr: E, i: { elite: 2, medical: 2 }, d: "Elite rescue specialists who reach and treat people anywhere. Very tough selection." },
+    { n: "Combat Controller", tr: E, i: { elite: 2, comms: 1, aviation: 1 }, d: "Special operators who control air traffic and air strikes from the ground." },
+    { n: "Aircraft Maintenance (Crew Chief)", tr: E, i: { mechanic: 2, aviation: 1 }, d: "Owns the upkeep of a specific aircraft." },
+    { n: "Cyber Defense Operations", tr: E, i: { cyber: 2 }, d: "Defends Air Force networks and systems." },
+    { n: "Intelligence Analyst", tr: E, i: { intel: 2 }, d: "Analyzes intelligence for aircrews and commanders." },
+    { n: "Security Forces", tr: E, i: { law: 2, weapons: 1 }, d: "Air Force police and base defense." },
+    { n: "Air Traffic Controller", tr: E, i: { comms: 2, aviation: 1 }, d: "Guides military aircraft in and out." },
+    { n: "Loadmaster", tr: E, i: { aviation: 2, logistics: 1 }, d: "Aircrew who load cargo and troops on transport planes." },
+    { n: "Aerospace Medical Technician", tr: E, i: { medical: 2 }, d: "Medical care in Air Force clinics and on medevac flights." },
+    { n: "Aircraft Armament Systems", tr: E, i: { weapons: 2, mechanic: 1 }, d: "Loads and maintains aircraft weapons." },
+    { n: "Civil Engineering", tr: E, i: { build: 2 }, d: "Builds, repairs and powers Air Force bases." },
+    { n: "Logistics and Supply", tr: E, i: { logistics: 2 }, d: "Moves and manages parts, fuel and equipment." },
+    { n: "Pilot", tr: O, i: { aviation: 2 }, d: "Flies fighters, bombers, tankers or transports." },
+    { n: "Combat Systems Officer", tr: O, i: { aviation: 1, weapons: 1, comms: 1 }, d: "Navigation and weapons systems on aircraft." },
+    { n: "Cyber Officer", tr: O, i: { cyber: 2 }, d: "Leads cyber operations." },
+    { n: "Intelligence Officer", tr: O, i: { intel: 2 }, d: "Leads intelligence teams." },
+    { n: "Nurse or Physician", tr: O, i: { medical: 2 }, d: "Medical care at Air Force hospitals and on medevac flights." },
+    { n: "Special Tactics Officer", tr: O, i: { elite: 2, comms: 1 }, d: "Leads combat control and special tactics teams." },
+    { n: "Civil Engineer Officer", tr: O, i: { build: 2 }, d: "Leads base construction and engineering." },
+    { n: "Logistics Readiness Officer", tr: O, i: { logistics: 2 }, d: "Keeps the Air Force supplied and moving." },
+    { n: "Security Forces Officer", tr: O, i: { law: 2 }, d: "Leads Air Force police and base defense." },
+  ],
+  sf: [
+    { n: "Space Systems Operations", tr: E, i: { comms: 2, intel: 1 }, d: "Operates satellites, missile warning and space tracking systems." },
+    { n: "Cyber Operations", tr: E, i: { cyber: 2 }, d: "Defends the networks that space systems depend on." },
+    { n: "Intelligence", tr: E, i: { intel: 2 }, d: "Tracks threats to U.S. satellites." },
+    { n: "Space Operations Officer", tr: O, i: { comms: 2, intel: 1 }, d: "Leads satellite, launch and space tracking crews." },
+    { n: "Developmental Engineer", tr: O, i: { mechanic: 1, cyber: 1, build: 1 }, d: "Designs and tests new space systems." },
+    { n: "Cyber Officer", tr: O, i: { cyber: 2 }, d: "Leads cyber defense of space systems." },
+    { n: "Intelligence Officer", tr: O, i: { intel: 2 }, d: "Leads space intelligence teams." },
+    { n: "Acquisition Officer", tr: O, i: { logistics: 2 }, d: "Manages the buying and building of satellites and systems." },
+  ],
+  cg: [
+    { n: "Aviation Survival Technician", tr: E, i: { elite: 2, medical: 1, aviation: 1 }, d: "The Coast Guard rescue swimmer, who jumps from helicopters to save people." },
+    { n: "Boatswain's Mate", tr: E, i: { law: 1, logistics: 1, comms: 1 }, d: "Drives small boats, leads deck crews and takes part in boardings." },
+    { n: "Maritime Enforcement Specialist", tr: E, i: { law: 2, weapons: 1 }, d: "Coast Guard law enforcement and security." },
+    { n: "Machinery Technician", tr: E, i: { mechanic: 2 }, d: "Keeps cutter and boat engines running." },
+    { n: "Health Services Technician", tr: E, i: { medical: 2 }, d: "Medical care at Coast Guard clinics and on cutters." },
+    { n: "Electronics Technician", tr: E, i: { cyber: 1, mechanic: 1, comms: 1 }, d: "Maintains radar, radios and navigation systems." },
+    { n: "Operations Specialist", tr: E, i: { comms: 2 }, d: "Runs command centers that coordinate searches and rescues." },
+    { n: "Aviation Maintenance Technician", tr: E, i: { mechanic: 2, aviation: 1 }, d: "Keeps Coast Guard helicopters and planes flying." },
+    { n: "Intelligence Specialist", tr: E, i: { intel: 2 }, d: "Analyzes intelligence on smuggling and maritime threats." },
+    { n: "Information Systems Technician", tr: E, i: { cyber: 2 }, d: "Runs Coast Guard networks and computer systems." },
+    { n: "Damage Controlman", tr: E, i: { build: 1, mechanic: 1 }, d: "Firefighting, welding and damage repair aboard cutters." },
+    { n: "Storekeeper", tr: E, i: { logistics: 2 }, d: "Manages supplies and finances for units." },
+    { n: "Coast Guard Aviator", tr: O, i: { aviation: 2 }, d: "Flies rescue helicopters and patrol planes." },
+    { n: "Cutter Officer", tr: O, i: { law: 1, comms: 1, logistics: 1 }, d: "Leads crews and operations on Coast Guard ships." },
+    { n: "Response Officer", tr: O, i: { law: 2 }, d: "Leads law enforcement and search-and-rescue operations." },
+    { n: "Engineering Officer", tr: O, i: { mechanic: 2, build: 1 }, d: "Leads engineering on cutters and shore units." },
+    { n: "Intelligence Officer", tr: O, i: { intel: 2 }, d: "Leads Coast Guard intelligence work." },
+    { n: "Cyber Officer", tr: O, i: { cyber: 2 }, d: "Leads Coast Guard cyber operations." },
+  ],
+};
+
+// Notes shown when a top interest has no matching job in a branch.
+const INTEREST_NOTES = {
+  usmc: { medical: "The Marines don't have their own medics. Navy Hospital Corpsmen serve with Marine units, so the Navy is the way to be a Marine unit's medic." },
+  sf: { medical: "The Space Force doesn't have its own medical jobs. Air Force medical personnel take care of Guardians." },
+};
+
+function interestVector(answers) {
+  const v = {};
+  answers.forEach((idx, i) => {
+    if (idx == null) return;
+    for (const [k, x] of Object.entries(QUESTIONS[i].options[idx].i || {})) v[k] = (v[k] || 0) + x;
+  });
+  return v;
+}
+
+// Ranks a branch's jobs on the chosen track. Each job's score is the user's
+// interest in its tags, averaged by tag weight, so a focused job (Pilot) beats
+// a broad one unless the user's interests really are spread across its tags.
+function topJobs(answers, branch, track, count = 3) {
+  const user = interestVector(answers);
+  return JOBS[branch]
+    .filter((j) => j.tr === track)
+    .map((j, order) => {
+      const dot = Object.entries(j.i).reduce((a, [k, x]) => a + x * (user[k] || 0), 0);
+      const total = Object.values(j.i).reduce((a, x) => a + x, 0);
+      const shared = Object.keys(j.i).filter((k) => user[k]).sort((a, b) => user[b] * j.i[b] - user[a] * j.i[a]);
+      return { ...j, fit: dot / total, shared, order };
+    })
+    .sort((a, b) => b.fit - a.fit || a.order - b.order)
+    .slice(0, count);
+}
+
+function interestNote(answers, branch) {
+  const notes = INTEREST_NOTES[branch];
+  if (!notes) return null;
+  const user = interestVector(answers);
+  const top = Object.keys(user).sort((a, b) => user[b] - user[a]).slice(0, 2);
+  const hit = top.find((k) => notes[k]);
+  return hit ? notes[hit] : null;
+}
+
+function joinWords(words) {
+  return words.length < 2 ? words.join("") : words.slice(0, -1).join(", ") + " and " + words[words.length - 1];
+}
 
 const TRAIT_IDS = Object.keys(TRAITS);
 
@@ -637,7 +869,7 @@ function renderIntro() {
     el("div", { class: "eyebrow" }, "Ranked Bingo"),
     el("h1", {}, "Which military branch fits you?"),
     el("p", { class: "muted" },
-      `${QUESTIONS.length} questions about how you like to live, work, train and think. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. The last few questions decide enlisted or officer, and Active Duty, the Reserve or the National Guard.`),
+      `${QUESTIONS.length} questions about how you like to live, work, train and think. No single answer decides anything: each one shifts a set of traits, and you're matched to the branch whose overall profile is closest to yours. Then a few questions pick your top jobs, enlisted or officer, and Active Duty, the Reserve or the National Guard.`),
     el("div", { class: "chips branch-strip" },
       ORDER.map((b) => el("span", { class: "chip" },
         el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name))),
@@ -705,6 +937,8 @@ function renderResults() {
   const option = serviceOption(top.id, components[0].id);
   const tracks = trackScore(state.answers);
   const track = TRACKS[tracks[0].id];
+  const jobs = topJobs(state.answers, top.id, tracks[0].id);
+  const jobNote = interestNote(state.answers, top.id);
   const strongest = Object.entries(user)
     .filter(([, u]) => Math.abs(u.value) >= 1)
     .sort((a, b) => b[1].weight * Math.abs(b[1].value) - a[1].weight * Math.abs(a[1].value))
@@ -730,7 +964,9 @@ function renderResults() {
       el("strong", {}, `${b.name} (${r.pct}%)`),
       el("p", { class: "muted", style: "margin:6px 0 0" }, b.tagline),
       reasons.length ? el("p", { style: "margin:8px 0 0; font-size:14px" },
-        `Shares your lean toward ${reasons.join(" and ")}.`) : null);
+        `Shares your lean toward ${reasons.join(" and ")}.`) : null,
+      el("p", { style: "margin:8px 0 0; font-size:14px" },
+        "Top role: ", el("strong", {}, topJobs(state.answers, r.id, tracks[0].id, 1)[0].n)));
   });
 
   app.append(el("div", { class: "card fade-in" },
@@ -741,6 +977,17 @@ function renderResults() {
       el("p", { style: "margin-top:12px" }, info.tagline),
       el("p", { style: "margin:0" }, "Best way to serve: ", el("strong", {}, `${option.title}, ${track.name}`))),
     el("p", {}, info.about),
+
+    el("div", { class: "section-title" }, "Top roles for you"),
+    el("div", { class: "jobs" }, jobs.map((j, n) => el("div", { class: "job", style: `--hero:${info.color}` },
+      el("div", { class: "job-path" }, `#${n + 1} · ${info.name} · ${track.name}`),
+      el("strong", { class: "job-name" }, j.n),
+      el("p", { class: "muted", style: "margin:4px 0 0" }, j.d),
+      j.shared.length ? el("p", { style: "margin:6px 0 0; font-size:14px" },
+        `Fits your interest in ${joinWords(j.shared.slice(0, 2).map((k) => INTERESTS[k]))}.`) : null))),
+    jobNote ? el("div", { class: "note", style: "margin-top:12px" }, jobNote) : null,
+    el("p", { class: "muted", style: "margin:10px 0 0; font-size:13px" },
+      "Job names are simplified. Every branch has many more jobs, and which ones you can get depends on test scores, physical standards and openings."),
 
     strongest.length ? [
       el("div", { class: "section-title" }, "Your profile"),
@@ -807,8 +1054,10 @@ function restart() {
 async function copyResult(e) {
   const ranked = score(state.answers);
   const option = serviceOption(ranked[0].id, componentScore(state.answers)[0].id);
-  const track = TRACKS[trackScore(state.answers)[0].id];
-  const text = `My Ranked Bingo result: ${option.title}, ${track.name}\n` +
+  const trackId = trackScore(state.answers)[0].id;
+  const track = TRACKS[trackId];
+  const job = topJobs(state.answers, ranked[0].id, trackId, 1)[0];
+  const text = `My Ranked Bingo result: ${option.title}, ${track.name}\nTop role: ${job.n}\n` +
     ranked.map((r) => `${BRANCHES[r.id].name}: ${r.pct}%`).join("\n");
   const btn = e.currentTarget;
   try {
@@ -830,7 +1079,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // Exposed for automated checks.
-window.branchQuiz = { QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, trackScore, serviceOption, state, render };
+window.branchQuiz = { QUESTIONS, BRANCHES, ORDER, TRAITS, profile, score, fits, clashes, componentScore, trackScore, serviceOption, topJobs, interestVector, JOBS, state, render };
 
 render();
 </script>
