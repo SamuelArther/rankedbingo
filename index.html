@@ -80,18 +80,21 @@
     border-radius: 10px; padding: 12px 18px;
     transition: background 0.15s, border-color 0.15s, transform 0.1s;
   }
-  button:hover { border-color: var(--accent); }
+  @media (hover: hover) {
+    button:hover { border-color: var(--accent); }
+    button:disabled:hover { border-color: var(--line); }
+    .primary:hover { filter: brightness(1.08); }
+    .primary:disabled:hover { border-color: var(--accent); filter: none; }
+  }
+  button { -webkit-tap-highlight-color: transparent; }
   button:active { transform: scale(0.99); }
   button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   button:disabled { opacity: 0.4; cursor: default; }
-  button:disabled:hover { border-color: var(--line); }
 
   .primary {
     background: var(--accent); color: var(--accent-ink);
     border-color: var(--accent); font-weight: 700;
   }
-  .primary:hover { filter: brightness(1.08); }
-  .primary:disabled:hover { border-color: var(--accent); filter: none; }
 
   .progress-row {
     display: flex; justify-content: space-between; align-items: center;
@@ -114,6 +117,12 @@
   }
   .option.selected { border-color: var(--accent); background: rgba(159, 211, 107, 0.1); }
   .option.selected .key { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .skip {
+    display: block; width: 100%; margin-top: 10px; padding: 10px 16px;
+    background: transparent; border-style: dashed; color: var(--muted); font-size: 14px;
+  }
+  .skip.selected { border-color: var(--accent); border-style: solid; color: var(--text); }
 
   .nav { display: flex; justify-content: space-between; margin-top: 20px; }
 
@@ -457,6 +466,7 @@ const QUESTIONS = [
   ] },
   // Role questions also score tracks (k): enlisted or officer.
   { topic: "Role", q: "Do you plan to get a four-year college degree?", options: [
+    { t: "I already have one", w: {}, k: { officer: 3 }, degree: true },
     { t: "Yes, before I join", w: {}, k: { officer: 2 } },
     { t: "Maybe, later or while I serve", w: {}, k: { enlisted: 1, officer: 1 } },
     { t: "No, I want to start right after high school", w: {}, k: { enlisted: 2 } },
@@ -490,6 +500,7 @@ const QUESTIONS = [
   { topic: "Service type", q: "What are your school or work plans for the next few years?", options: [
     { t: "Military first. School can come later, or during", w: {}, c: { active: 2 } },
     { t: "Go to college full time", w: {}, c: { guard: 2, reserve: 2 } },
+    { t: "I've already finished college and want to use my degree", w: {}, c: { active: 1, reserve: 1 }, degree: true },
     { t: "Keep or start a civilian job", w: {}, c: { reserve: 2, guard: 1 } },
   ] },
   { topic: "Service type", q: "Floods, wildfires or storms hit your state. Would you want to be called up to help?", options: [
@@ -838,7 +849,8 @@ function clashes(user, branch) {
     .map(({ t, u }) => `The ${BRANCHES[branch].name} leans toward ${phrase(t, BRANCHES[branch].traits[t])}, but you leaned toward ${phrase(t, u.value)}.`);
 }
 
-const state = { step: -1, answers: [] };
+// Skipped questions stay null in answers, so scoring simply ignores them.
+const state = { step: -1, answers: [], skipped: new Set() };
 const app = document.getElementById("app");
 
 function el(tag, attrs = {}, ...children) {
@@ -881,6 +893,7 @@ function renderQuestion() {
   const i = state.step;
   const q = QUESTIONS[i];
   const chosen = state.answers[i];
+  const skipped = state.skipped.has(i);
 
   const options = q.options.map((o, idx) => el("button", {
     class: "option" + (chosen === idx ? " selected" : ""),
@@ -895,9 +908,11 @@ function renderQuestion() {
     el("div", { class: "progress" }, el("div", { style: `width:${(i / QUESTIONS.length) * 100}%` })),
     el("h2", {}, q.q),
     el("div", { class: "options", role: "group", "aria-label": q.q }, options),
+    el("button", { class: "skip" + (skipped ? " selected" : ""), "aria-pressed": String(skipped), onclick: skip },
+      "None of these fit me, skip"),
     el("div", { class: "nav" },
       el("button", { onclick: back }, i === 0 ? "Intro" : "Back"),
-      el("button", { class: "primary", disabled: chosen == null, onclick: next },
+      el("button", { class: "primary", disabled: chosen == null && !skipped, onclick: next },
         i === QUESTIONS.length - 1 ? "See my results" : "Next")),
   ));
 }
@@ -906,15 +921,27 @@ let advanceTimer = 0;
 
 function choose(idx) {
   state.answers[state.step] = idx;
+  state.skipped.delete(state.step);
   render();
-  // Auto-advance after a short beat so the selection is visible.
+  autoAdvance();
+}
+
+function skip() {
+  state.answers[state.step] = null;
+  state.skipped.add(state.step);
+  render();
+  autoAdvance();
+}
+
+// Moves on after a short beat so the selection is visible.
+function autoAdvance() {
   clearTimeout(advanceTimer);
   const step = state.step;
   advanceTimer = setTimeout(() => { if (state.step === step) next(); }, 220);
 }
 
 function next() {
-  if (state.answers[state.step] == null) return;
+  if (state.answers[state.step] == null && !state.skipped.has(state.step)) return;
   state.step += 1;
   render();
 }
@@ -925,7 +952,22 @@ function back() {
   render();
 }
 
+const MIN_ANSWERS = 10;
+
 function renderResults() {
+  const answered = state.answers.filter((a) => a != null).length;
+  if (answered < MIN_ANSWERS) {
+    app.append(el("div", { class: "card fade-in" },
+      el("div", { class: "eyebrow" }, "Not enough intel"),
+      el("h1", {}, "Answer a few more"),
+      el("p", { class: "muted" },
+        `You answered ${answered} of ${QUESTIONS.length} questions. Answer at least ${MIN_ANSWERS} so there's enough to match you on.`),
+      el("div", { class: "actions" },
+        el("button", { class: "primary", onclick: () => { state.step = state.skipped.size ? Math.min(...state.skipped) : 0; render(); } }, "Go back to skipped questions"),
+        el("button", { onclick: restart }, "Start over")),
+    ));
+    return;
+  }
   const ranked = score(state.answers);
   const user = profile(state.answers);
   const top = ranked[0];
@@ -938,6 +980,7 @@ function renderResults() {
   const components = componentScore(state.answers);
   const tracks = trackScore(state.answers);
   const track = TRACKS[tracks[0].id];
+  const hasDegree = state.answers.some((idx, i) => idx != null && QUESTIONS[i].options[idx].degree);
   const options = tied.map((r) => serviceOption(r.id, components[0].id));
   const jobNotes = tied.map((r) => interestNote(state.answers, r.id)).filter(Boolean);
   const strongest = Object.entries(user)
@@ -1051,6 +1094,9 @@ function renderResults() {
         el("span", { class: "num" }, r.pct + "%"));
     })),
     el("p", { style: "margin:14px 0 0" }, el("strong", {}, track.name + ": "), track.about),
+    hasDegree && tracks[0].id === "enlisted"
+      ? el("div", { class: "note", style: "margin-top:12px" }, "You said you already have a degree. Your answers lean enlisted, but with a degree you could also apply to become an officer through officer candidate or training school, so ask a recruiter about both.")
+      : null,
     el("p", { class: "muted", style: "margin:8px 0 0; font-size:14px" },
       "Not set in stone: enlisted members can become officers later through commissioning programs, and NCOs lead plenty of people too."),
 
@@ -1063,6 +1109,7 @@ function renderResults() {
 function restart() {
   state.step = -1;
   state.answers = [];
+  state.skipped.clear();
   render();
 }
 
@@ -1094,6 +1141,7 @@ document.addEventListener("keydown", (e) => {
   if (state.step < 0 || state.step >= QUESTIONS.length) return;
   const n = Number(e.key);
   if (n >= 1 && n <= QUESTIONS[state.step].options.length) choose(n - 1);
+  else if (e.key === "s" || e.key === "0") skip();
   else if (e.key === "ArrowLeft") { if (state.step > 0) back(); }
   else if (e.key === "ArrowRight" || e.key === "Enter") next();
 });

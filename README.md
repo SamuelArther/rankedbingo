@@ -8,7 +8,8 @@ A quiz that matches you to the U.S. military branch that fits you best (Army, Ma
 
 ## How it works
 
-- 41 questions, most of them indirect: weekend trips, game picks, how you handle an order you disagree with, boot camp style, what you want after you get out.
+- 45 questions, most of them indirect: weekend trips, game picks, how you handle an order you disagree with, boot camp style, what you want after you get out.
+- Any question can be skipped with "None of these fit me". You need at least 10 answers to get a result.
 - No answer points straight at a branch. Each one nudges up to three of 12 traits: sea, land, air, space, physical, tech, discipline, travel, home missions, combat, organization size and comfort.
 - Each branch has a profile on the same traits. Your match is the cosine similarity between your leanings and each branch profile, so balanced profiles don't win by default.
 - Results show your top branch, scores for all six, your trait profile, why you matched, where you don't fit, and any other branch within 10 points.
