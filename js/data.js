@@ -294,7 +294,8 @@ const POOL = [
   { id: 35, always: true, fixed: true, topic: "Job interests", q: "Special operations selection, where most people wash out:", options: [
     { t: "That's my goal", w: { physical: 2 }, i: { elite: 4 } },
     { t: "Maybe someday", w: { physical: 1 }, i: { elite: 2 } },
-    { t: "No thanks", w: {} },
+    // An explicit no outweighs any special ops interest from other answers.
+    { t: "No thanks", w: {}, i: { elite: -6 } },
   ] },
   // Role questions also score tracks (k): enlisted or officer.
   { id: 36, always: true, fixed: true, topic: "Role", q: "Do you plan to get a four-year college degree?", options: [

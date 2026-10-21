@@ -101,10 +101,11 @@ function render() {
   else if (route.page === "training") renderTraining();
   else if (route.page === "shared") renderShared();
   else if (route.page === "compare") renderCompare();
+  else if (route.page === "fun") renderFun();
   else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) renderQuestion();
   else renderResults();
-  const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training", shared: "Shared result", compare: "Compare results" };
+  const titles = { branches: "Branches", types: "Service types", training: "Boot camp & training", shared: "Shared result", compare: "Compare results", fun: "Fun" };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name : titles[route.page];
   document.title = pageTitle ? `${pageTitle} · Ranked Bingo` : "Ranked Bingo";
   window.scrollTo({ top: 0 });
@@ -214,6 +215,7 @@ function autoAdvance() {
 function next() {
   if (state.answers[state.step] == null && !state.skipped.has(state.step)) return;
   state.step += 1;
+  if (state.step === QUESTIONS.length) recordQuizDone(QUESTIONS, state.answers, state.mode);
   save();
   render();
 }
@@ -367,6 +369,9 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
 
     el("div", { class: "section-title" }, "Trait map"),
     radarSection(user, top.id),
+
+    el("div", { class: "section-title" }, "Bingo card"),
+    bingoSection(r, encodeAnswers(qs, answers)),
 
     why.length ? [
       el("div", { class: "section-title" }, mine ? "Why you matched" : "Why it matched"),
@@ -544,6 +549,7 @@ function shareSection(r) {
     el("div", { class: "actions", style: "margin-top:10px; justify-content:center" },
       el("button", { class: "primary", onclick: async () => {
         const link = shareLink(code, getName());
+        award("recruiter");
         if (CAN_SHARE) {
           try { await navigator.share({ title: "My Ranked Bingo result", url: link }); return; } catch { /* fall back to copying */ }
         }
@@ -606,6 +612,7 @@ function renderCompare() {
   }
   const names = [cleanName(route.nameA) || "Player 1", cleanName(route.nameB) || "Player 2"];
   const ra = computeResult(a.qs, a.answers), rb = computeResult(b.qs, b.answers);
+  award("squad");
   setBackground(ra.top.id === rb.top.id ? ra.top.id : null);
   const sameTop = ra.top.id === rb.top.id;
 
@@ -815,6 +822,7 @@ async function cardBlob(r, name, format) {
 
 async function shareImage(r, name, format, useShareSheet) {
   const blob = await cardBlob(r, name, format);
+  award("recruiter");
   const file = new File([blob], `ranked-bingo-${format}.png`, { type: "image/png" });
   if (useShareSheet && CAN_SHARE && navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: "My Ranked Bingo result" }); return; } catch { /* fall back to download */ }
@@ -881,7 +889,7 @@ function parseRoute() {
     route.nameB = params.get("b");
   }
   if (route.page === "branch" && !route.branch) route.page = "branches";
-  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare"].includes(route.page)) route.page = "quiz";
+  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun"].includes(route.page)) route.page = "quiz";
 }
 
 function branchLink(branch, track = "enlisted", type = "active") {
@@ -890,7 +898,7 @@ function branchLink(branch, track = "enlisted", type = "active") {
 
 function renderNav() {
   const nav = document.getElementById("nav");
-  const tabs = [["quiz", "Quiz"], ["branches", "Branches"], ["types", "Service types"], ["training", "Boot camp & training"]];
+  const tabs = [["quiz", "Quiz"], ["branches", "Branches"], ["types", "Service types"], ["training", "Boot camp & training"], ["fun", "Fun"]];
   const current = route.page === "branch" ? "branches" : route.page;
   nav.replaceChildren(
     el("a", { class: "brand", href: "#/quiz" }, "Ranked Bingo"),
@@ -925,6 +933,7 @@ function segmented(label, items, current, makeHref) {
 
 function renderBranch() {
   const b = route.branch, info = BRANCHES[b], d = DETAILS[b];
+  recordBranchVisit(b);
   const hasGuard = b === "army" || b === "af";
   // A Guard link for a branch without a Guard shows its Reserve, with the note.
   const { track } = route;

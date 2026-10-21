@@ -22,6 +22,12 @@ A quiz that matches you to the U.S. military branch that fits you best (Army, Ma
 - **Compare:** paste a friend's link (or open theirs after taking the quiz) to see both results side by side.
 - **Share image:** a card with your branch photo, the six-branch graph and your reasons, in three formats: long (phone story), wide (desktop) and square (rounded corners).
 
+## Bingo and badges
+
+- **Bingo card:** your results include a 5x5 card made from your answers (your 12 trait leanings, top job interests and service type). Each branch stamps the squares it really shares with you; a full row, column or diagonal is a bingo.
+- **Boot camp bingo** on the Fun page: tap what happened (or what you expect) at boot camp.
+- **Badges** for finishing quizzes, bingos, exploring every branch, sharing and comparing. Saved in your browser only.
+
 ## Explore
 
 Besides the quiz, the site has:
@@ -34,6 +40,6 @@ Training facts were checked against official branch recruiting and military site
 
 Add `?debug` to the URL to see what each answer scores while playtesting.
 
-Plain HTML, CSS and JavaScript with no dependencies, build step or tracking: `index.html`, `css/style.css`, `js/data.js` (content), `js/logic.js` (scoring) and `js/app.js` (pages).
+Plain HTML, CSS and JavaScript with no dependencies, build step or tracking: `index.html`, `css/style.css`, `js/data.js` (content), `js/logic.js` (scoring), `js/extras.js` (bingo, badges, Fun page) and `js/app.js` (pages).
 
 Just for fun. Not affiliated with or endorsed by the U.S. military or any branch. Talk to recruiters before deciding anything.

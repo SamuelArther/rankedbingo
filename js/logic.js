@@ -35,7 +35,7 @@ function topJobs(answers, branch, track, count = 3, qs = QUESTIONS) {
     .map((j, order) => {
       const parts = Object.entries(j.i).map(([k, x]) => (user[k] || 0) * (x / 2)).sort((a, b) => b - a);
       const fit = parts.reduce((a, v, n) => a + v / 2 ** n, 0);
-      const shared = Object.keys(j.i).filter((k) => user[k]).sort((a, b) => user[b] * j.i[b] - user[a] * j.i[a]);
+      const shared = Object.keys(j.i).filter((k) => user[k] > 0).sort((a, b) => user[b] * j.i[b] - user[a] * j.i[a]);
       return { ...j, fit, shared, order, tags: parts.length };
     })
     .sort((a, b) => b.fit - a.fit || a.tags - b.tags || a.order - b.order)
