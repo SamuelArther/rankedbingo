@@ -1,0 +1,96 @@
+/* Gear group: vehicles, uniforms, traditions and acronym decoder (js/f-gear.js). */
+
+.gear-tabs { margin: 18px 0 6px; }
+.gear-filter { margin: 0 0 14px; }
+.gear-h2 { margin: 18px 0 12px; border-left: 4px solid var(--hero); padding-left: 12px; }
+.gear-h2-plain { margin: 30px 0 10px; }
+.gear-small { font-size: 13px; }
+
+.gear-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.gear-card {
+  display: grid; gap: 8px; align-content: start; min-width: 0;
+  background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--hero, var(--line));
+  border-radius: 12px; padding: 14px 16px;
+}
+.gear-card h3 { margin: 0; font-size: 17px; line-height: 1.25; overflow-wrap: anywhere; }
+.gear-card p { margin: 0; font-size: 14px; }
+.gear-card .job-path { margin-bottom: 2px; }
+.gear-card-top { display: flex; gap: 12px; align-items: flex-start; }
+.gear-card-title { min-width: 0; }
+.gear-icon { flex: none; font-size: 26px; line-height: 1.2; }
+.gear-fact { color: var(--muted); }
+.gear-fact strong { color: var(--text); }
+
+.gear-status { display: grid; gap: 6px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.gear-status p { color: var(--muted); font-size: 13px; }
+.gear-badge {
+  display: inline-flex; align-items: center; gap: 6px; width: fit-content;
+  font: 600 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+}
+.gear-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gear-st, var(--accent)); flex: none; }
+.gear-st-service { --gear-st: var(--accent); }
+.gear-st-new { --gear-st: #5fb8e8; }
+.gear-st-dev { --gear-st: var(--warn); }
+.gear-st-retiring { --gear-st: var(--danger); }
+:root[data-theme="light"] .gear-st-new { --gear-st: #1f6fa3; }
+
+.gear-swatch { height: 36px; border-radius: 8px; border: 1px solid var(--line); }
+
+.gear-sources { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.gear-sources summary { cursor: pointer; width: fit-content; }
+.gear-sources ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+.gear-sources a { color: var(--text); overflow-wrap: anywhere; }
+.gear-sources summary:focus-visible, .gear-tabs a:focus-visible, .gear-sources a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Birthdays and traditions. */
+.gear-bdays { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gear-bday {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px;
+  background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--hero); border-radius: 10px; padding: 12px 14px;
+}
+.gear-bday.today { border-color: var(--hero); box-shadow: 0 0 0 1px var(--hero); }
+.gear-bday-main { display: grid; gap: 2px; flex: 1 1 240px; min-width: 0; }
+.gear-bday-main p { margin: 4px 0 0; font-size: 14px; }
+.gear-bday-name { font-size: 17px; color: color-mix(in srgb, var(--hero) 50%, var(--text)); }
+.gear-bday-main .muted { font-size: 13px; }
+.gear-bday-count { display: grid; gap: 2px; align-content: start; text-align: right; flex: 0 0 auto; }
+.gear-turns { font: 600 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.gear-clock { font: 700 16px/1.4 var(--mono); font-variant-numeric: tabular-nums; color: var(--text); }
+.gear-holiday .gear-clock { font-size: 15px; }
+.gear-neutral { color: var(--muted); }
+.gear-trad { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 14px; }
+@media (max-width: 480px) {
+  .gear-bday-count { text-align: left; }
+}
+
+/* Acronym decoder. */
+.gear-acr-card h2 { margin-top: 0; }
+.gear-acr-card .seg-label, section > .seg-label { display: block; margin-bottom: 6px; }
+.gear-acr-input { min-height: 120px; }
+.gear-acr-actions { margin-top: 10px; }
+.gear-acr-out {
+  margin-top: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+  white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.9; font-size: 15px;
+}
+button.gear-hit {
+  display: inline; font: inherit; line-height: 1.3; padding: 0 3px; margin: 0; border-radius: 4px;
+  border: 0; border-bottom: 2px dotted var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text);
+}
+button.gear-hit:active { transform: none; }
+@media (hover: hover) { button.gear-hit:hover { background: color-mix(in srgb, var(--accent) 30%, transparent); } }
+.gear-acr-def:not(:empty) { margin-top: 10px; }
+.gear-acr-def-in { padding: 10px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--panel-2); display: grid; gap: 4px; font-size: 15px; }
+.gear-acr-term { font-family: var(--mono); color: var(--accent); }
+.gear-acr-found { margin: 0; display: grid; gap: 6px; font-size: 14px; }
+.gear-acr-found > div { display: grid; grid-template-columns: minmax(64px, auto) 1fr; gap: 10px; }
+.gear-acr-found dt { font: 700 14px/1.5 var(--mono); color: var(--accent); }
+.gear-acr-found dd { margin: 0; }
+#gear-acr-search { margin-bottom: 10px; }
+.gear-acr-list { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+.gear-acr-row { display: grid; grid-template-columns: minmax(72px, 96px) 1fr; gap: 4px 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.gear-acr-row:last-child { border-bottom: 0; }
+.gear-acr-row .gear-acr-term { overflow-wrap: anywhere; }
+.gear-acr-tags { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.gear-tag { display: inline-flex; align-items: center; gap: 5px; }
+.gear-tag .dot { width: 8px; height: 8px; }

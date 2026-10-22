@@ -346,6 +346,12 @@ button.bingo-cell:disabled { cursor: default; opacity: 1; }
 .field { display: grid; gap: 6px; }
 form.card .field { margin-top: 16px; }
 
+/* Hub cards for feature pages (js/pages.js). */
+.hub-grid { margin: 8px 0 18px; }
+.hub-card { display: grid; gap: 4px; text-decoration: none; color: var(--text); }
+.hub-icon { font-size: 26px; line-height: 1; }
+.hub-card .muted { font-size: 14px; }
+
 /* Installation map. */
 .map-box { height: 62vh; min-height: 360px; margin: 4px 0 12px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel-2); }
 .map-chip { display: inline-flex; align-items: center; gap: 6px; }

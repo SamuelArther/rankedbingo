@@ -46,6 +46,15 @@ Besides the quiz, the site has:
 - **ASVAB practice:** 20 original practice questions in the style of the ASVAB's sections, with a score per section and every answer explained.
 - **Squad compare:** paste several friends' result links to see the whole group's split and the branch it matches best.
 - **Feedback:** a form in the site's own style that sends answers to a Google Form.
+- **Start here:** a 16-step roadmap for anyone thinking about the military, from the quiz to talking with recruiters, with progress saved in the browser.
+- **Learn:** branch vs branch, benefits (with a GI Bill estimate), enlistment contracts, MEPS day, discharges explained (with a glossary), officer paths, service academies, gear, uniforms, an acronym decoder and a page for parents.
+- **Fitness:** a score calculator using each branch's official fitness test tables, a PT tracker and an 8-week boot camp prep plan.
+- **Careers:** job vs job, a job-only quiz, and typical duty stations for each job on the map.
+- **Games:** boot camp story mode, rank insignia and ribbon guides with guessing games, military time, Morse code, predict a friend's branch, a daily question with streaks, and branch birthdays.
+- **On results:** a "first 4 years" timeline, your results over time, and a QR code on share cards.
+- **Settings:** text size and reduced motion. The map also has a "Near me" button (location stays in the browser).
+
+Feature pages are separate modules (`js/f-*.js`, `css/f-*.css`) registered through `js/pages.js`. Map descriptions are translated through `lang/bases-<code>.json` (`tools/build_base_langs.py`).
 
 - **Branches:** a page per branch covering what it does, what life is like, who it fits, and quick facts. A path picker (enlisted or officer, and Active Duty, Reserve or National Guard) explains that path step by step and lists example jobs with their training.
 - **Service types:** Active Duty, Reserve and National Guard explained, plus a table of which branch has what.

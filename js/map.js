@@ -37,10 +37,26 @@ function loadMapLibs() {
       s.onerror = () => reject(new Error(`load failed: ${src}`));
       document.head.append(s);
     });
-    mapLoading = Promise.all([script(`${LEAFLET}leaflet.min.js`, LEAFLET_JS_SRI), script("js/bases-data.js")])
+    // A missing translation isn't an error: descriptions stay in English.
+    const translation = LANG === "en" ? Promise.resolve() : loadScriptOnce(`lang/bases-${LANG}.js`).catch(() => {});
+    mapLoading = Promise.all([script(`${LEAFLET}leaflet.min.js`, LEAFLET_JS_SRI), loadScriptOnce("js/bases-data.js"), translation])
+      .then(applyBaseTranslations)
       .catch((e) => { mapLoading = null; throw e; });
   }
   return mapLoading;
+}
+
+// Swaps in translated descriptions and location names, keeping the English
+// location for search.
+function applyBaseTranslations() {
+  const tr = window.BASES_TR;
+  if (!tr || window.BASES.translated) return;
+  for (const site of window.BASES) {
+    site.locEn = site.loc;
+    site.d = tr[site.d] || site.d;
+    site.loc = tr[site.loc] || site.loc;
+  }
+  window.BASES.translated = true;
 }
 
 function mapsLink(site) {
@@ -57,6 +73,30 @@ function basePopup(site) {
     el("a", { href: mapsLink(site), target: "_blank", rel: "noopener" }, T("Open in Google Maps ↗")));
 }
 
+// Search results with whole-word matches first ("Rota" finds Naval Station
+// Rota before "Marine Rotational Force"), then the rest in name order.
+function rankMatches(list, q) {
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const word = new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, "u");
+  const rank = (m) => (word.test(m.text) ? 0 : 1);
+  return [...list].sort((a, b) => rank(a) - rank(b));
+}
+
+// Great-circle distance in kilometers.
+function distanceKm([lat1, lng1], [lat2, lng2]) {
+  const rad = Math.PI / 180;
+  const a = Math.sin(((lat2 - lat1) * rad) / 2) ** 2
+    + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lng2 - lng1) * rad) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+
+// Miles for U.S. English readers, kilometers for everyone else.
+function formatDistance(km) {
+  const miles = (navigator.language || "en-US") === "en-US" && LANG === "en";
+  const n = miles ? km * 0.621371 : km;
+  return T(miles ? "{n} mi" : "{n} km", { n: n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString() });
+}
+
 function renderMap() {
   const holder = el("div", { class: "fade-in" },
     el("div", { class: "eyebrow" }, T("Explore")),
@@ -67,7 +107,10 @@ function renderMap() {
   app.append(holder);
   loadMapLibs()
     .then(() => { if (route.page === "map") { status.remove(); drawMap(holder); } })
-    .catch(() => { status.textContent = T("Couldn't load the map. Check your connection and try again."); });
+    .catch((e) => {
+      console.error(e);
+      if (status.isConnected) status.textContent = T("Couldn't load the map. Check your connection and try again.");
+    });
 }
 
 function drawMap(holder) {
@@ -77,6 +120,7 @@ function drawMap(holder) {
   const count = el("p", { class: "muted", style: "font-size:14px; margin:8px 0" });
   const results = el("div", { class: "job-list" });
   const box = el("div", { class: "map-box" });
+  const nearStatus = el("span", { class: "muted", role: "status", style: "font-size:14px" });
 
   const chips = el("div", { class: "chips", role: "group", "aria-label": T("Branches") });
   const drawChips = () => chips.replaceChildren(...ORDER.map((b) => el("button", {
@@ -92,7 +136,9 @@ function drawMap(holder) {
   }, c === "all" ? T("All") : COMPONENTS[c].name)));
   drawComponents();
 
-  holder.append(chips, components, el("div", { style: "margin-top:12px" }, search), count, box, results,
+  holder.append(chips, components, el("div", { style: "margin-top:12px" }, search),
+    el("div", { class: "actions", style: "margin:10px 0 0" }, el("button", { type: "button", onclick: () => findNear() }, T("📍 Near me")), nearStatus),
+    count, box, results,
     el("p", { class: "muted", style: "font-size:13px; margin-top:16px" },
       T("U.S. sites come from the Defense Department's public list of installations (fiscal year 2024, with 2025 name changes). Overseas and Coast Guard sites were added from official base websites. Pins mark the main area of each site, not its exact boundary.")));
 
@@ -104,7 +150,7 @@ function drawMap(holder) {
     const marker = L.circleMarker([site.lat, site.lng], { radius: 6, color: "#0b0f0c", weight: 1, fillColor: color, fillOpacity: 0.9 });
     marker.bindPopup(() => basePopup(site), { maxWidth: 280 });
     marker.bindTooltip(site.n, { direction: "top", offset: [0, -6] });
-    return { site, marker, text: `${site.n} ${site.loc}`.toLowerCase() };
+    return { site, marker, text: `${site.n} ${site.loc} ${site.locEn || ""}`.toLowerCase() };
   });
 
   // Smaller pins when zoomed out, so crowded areas stay readable.
@@ -113,9 +159,30 @@ function drawMap(holder) {
   for (const m of markers) m.marker.setRadius(pinSize());
 
   const focus = (m) => {
-    map.flyTo([m.site.lat, m.site.lng], Math.max(map.getZoom(), 10), { duration: 0.8 });
+    const still = reducedMotion();
+    if (still) map.setView([m.site.lat, m.site.lng], Math.max(map.getZoom(), 10));
+    else map.flyTo([m.site.lat, m.site.lng], Math.max(map.getZoom(), 10), { duration: 0.8 });
     m.marker.openPopup();
-    box.scrollIntoView({ behavior: "smooth", block: "center" });
+    box.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "center" });
+  };
+
+  // Near me: the closest installations to the device's location. The
+  // location is only used in the browser and never sent anywhere.
+  let nearList = [];
+  let youMarker = null;
+  const findNear = () => {
+    if (!navigator.geolocation) { nearStatus.textContent = T("Your browser can't share a location."); return; }
+    nearStatus.textContent = T("Finding your location...");
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const here = [pos.coords.latitude, pos.coords.longitude];
+      nearStatus.textContent = "";
+      if (youMarker) youMarker.remove();
+      youMarker = L.circleMarker(here, { radius: 8, color: "#ffffff", weight: 3, fillColor: "#e04848", fillOpacity: 1 }).addTo(map).bindTooltip(T("You are here"));
+      nearList = markers.map((m) => ({ m, km: distanceKm(here, [m.site.lat, m.site.lng]) })).sort((a, b) => a.km - b.km).slice(0, 10);
+      map.fitBounds(L.latLngBounds([here, ...nearList.slice(0, 5).map((x) => [x.m.site.lat, x.m.site.lng])]), { padding: [30, 30], maxZoom: 11 });
+      update();
+    }, () => { nearStatus.textContent = T("Couldn't get your location. Check that location access is allowed for this site."); },
+    { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
   };
 
   function update() {
@@ -127,10 +194,15 @@ function drawMap(holder) {
       else if (map.hasLayer(m.marker)) m.marker.remove();
     }
     count.textContent = T("Showing {count} of {total} installations", { count: visible.length, total: markers.length });
-    // A short list for searches, so the right pin can be picked without hunting.
-    results.replaceChildren(...(q ? visible.slice(0, 12) : []).map((m) => el("button", {
-      type: "button", class: "job-row", style: `--hero:${siteBranch(m.site).color}`, onclick: () => focus(m),
-    }, el("span", { class: "job-row-text" }, el("strong", {}, m.site.n), el("span", { class: "muted" }, `${siteBranch(m.site).name} · ${m.site.loc}`)))));
+    // A short list for searches (or the closest sites), so the right pin can be picked without hunting.
+    const near = !q && nearList.length ? nearList.filter((x) => visible.includes(x.m)) : null;
+    const rows = near ? near.map((x) => [x.m, formatDistance(x.km)]) : (q ? rankMatches(visible, q).slice(0, 12) : []).map((m) => [m, null]);
+    results.replaceChildren(
+      near ? el("div", { class: "section-title" }, T("Closest to you")) : null,
+      ...rows.map(([m, dist]) => el("button", {
+        type: "button", class: "job-row", style: `--hero:${siteBranch(m.site).color}`, onclick: () => focus(m),
+      }, el("span", { class: "job-row-text" }, el("strong", {}, m.site.n),
+        el("span", { class: "muted" }, [siteBranch(m.site).name, m.site.loc, dist].filter(Boolean).join(" · "))))));
   }
   search.addEventListener("input", update);
   update();

@@ -67,6 +67,10 @@ const BADGES = [
   { id: "recruiter", icon: "📣", name: "Recruiter", desc: "Share your result." },
   { id: "squad", icon: "👥", name: "Squad goals", desc: "Compare results with a friend." },
   { id: "feedback", icon: "📬", name: "Mail call", desc: "Send feedback." },
+  { id: "clockwork", icon: "🕐", name: "Clockwork", desc: "Score 20 in the military time challenge." },
+  { id: "sparks", icon: "📡", name: "Sparks", desc: "Decode 10 words in the Morse challenge." },
+  { id: "streak7", icon: "🔥", name: "On fire", desc: "Answer the daily question 7 days in a row." },
+  { id: "psychic", icon: "🔮", name: "Called it", desc: "A prediction about a friend's branch comes true." },
   { id: "graduate", icon: "🎓", name: "Boot camp grad", desc: "Get a bingo in boot camp bingo." },
   { id: "phonetic", icon: "📻", name: "Phonetic pro", desc: "Score 20 in the phonetic alphabet challenge." },
 ];
@@ -106,6 +110,7 @@ function recordQuizDone(qs, answers, mode) {
     if (!stats.tops.includes(r.top.id)) stats.tops.push(r.top.id);
     if (stats.tops.length >= 3) award("hopper");
     if (r.tied.length > 1) award("tie");
+    recordHistory(qs, answers, mode, r);
   }
   saveJson(STATS_KEY, stats);
 }
@@ -348,6 +353,7 @@ function renderFun() {
     app.append(el("div", { class: "fade-in" },
       el("div", { class: "eyebrow" }, T("Fun")),
       el("h1", {}, T("Games and extras")),
+      hubCards("fun"),
       el("div", { class: "section-title" }, T("Boot camp bingo")),
       renderBootcampBingo(),
       el("div", { class: "section-title" }, T("ASVAB practice")),

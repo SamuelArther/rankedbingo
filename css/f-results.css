@@ -1,0 +1,25 @@
+/* Result history chart. */
+.history-box { padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.history-chart { display: block; width: 100%; height: auto; }
+.history-grid { stroke: var(--line); stroke-width: 1; }
+.history-axis { fill: var(--muted); font: 600 11px var(--mono); }
+.history-legend { margin-top: 8px; font-size: 13px; }
+
+/* Display settings menu under the nav. */
+.settings-panel { margin: 10px 0 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.settings-panel .seg { margin: 6px 0 0; }
+
+/* Text size. Fonts are set in px, so the page is zoomed instead; the map is
+   left alone because zooming it would throw off its touch positions. */
+:root[data-text="large"]:not([data-page="map"]) body { zoom: 1.12; }
+:root[data-text="larger"]:not([data-page="map"]) body { zoom: 1.25; }
+
+/* Reduced motion, from the site's own setting. */
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

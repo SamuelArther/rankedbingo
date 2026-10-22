@@ -1,0 +1,75 @@
+/* Careers pages: job compare, job quiz, officer paths, academies, job bases. */
+
+.careers-small { font-size: 13px; }
+.careers-why { font-size: 13px; color: var(--text); }
+.careers-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hero); flex: none; }
+.careers-branch-chip { display: inline-flex; align-items: center; gap: 6px; }
+.careers-linkbtn {
+  background: none; border: 0; padding: 2px 0; color: var(--accent); text-decoration: underline; cursor: pointer;
+}
+
+/* Job picker and compare slots. */
+.careers-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 18px; }
+.careers-slot { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.careers-picker { display: grid; gap: 8px; min-width: 0; }
+.careers-pick-branches .seg-item { padding: 6px 10px; font-size: 13px; }
+.careers-pick-results:empty { display: none; }
+.careers-change { justify-self: start; padding: 6px 12px; font-size: 13px; }
+
+.careers-cmp { margin-top: 22px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+.careers-cmp-row { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+.careers-cmp-row:first-child { border-top: 0; }
+.careers-cmp-label {
+  grid-column: 1 / -1; padding: 10px 12px 0;
+  font: 600 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+}
+.careers-cmp-cell { padding: 6px 12px 12px; font-size: 14px; min-width: 0; overflow-wrap: anywhere; border-left: 3px solid var(--hero); }
+.careers-cmp-cell + .careers-cmp-cell { border-left-width: 3px; }
+.careers-cmp-head .careers-cmp-label { display: none; }
+.careers-cmp-head .careers-cmp-cell { padding-top: 12px; background: var(--panel-2); }
+.careers-cmp-head strong { font-size: 16px; line-height: 1.3; }
+.careers-cmp-links { display: grid; gap: 4px; }
+
+/* Officer paths. */
+.careers-finder { margin-top: 18px; }
+.careers-fit-list { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.careers-fit-list li > .muted.careers-small { margin-top: 2px; }
+.careers-fit-top > strong { color: var(--accent); }
+.careers-routes { display: grid; gap: 8px; }
+.careers-route { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.careers-route summary { cursor: pointer; padding: 12px 14px; display: grid; gap: 2px; list-style: none; }
+.careers-route summary::-webkit-details-marker { display: none; }
+.careers-route summary strong::after { content: " +"; font-family: var(--mono); color: var(--muted); }
+.careers-route[open] summary strong::after { content: " –"; }
+.careers-route summary .muted { font-size: 14px; }
+.careers-route summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 10px; }
+.careers-route-body { padding: 0 14px 12px; font-size: 15px; }
+.careers-route-body .section-title { margin-top: 14px; }
+.careers-paths-branch { display: grid; gap: 10px; margin-top: 12px; }
+.careers-path-row { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--hero); border-radius: 10px; padding: 12px 14px; }
+.careers-path-row p { margin: 6px 0; font-size: 15px; }
+
+.careers-facts { margin: 12px 0 0; display: grid; gap: 10px; }
+.careers-facts dt { font: 600 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.careers-facts dd { margin: 2px 0 0; font-size: 15px; }
+.careers-facts dd ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+.careers-notes { padding-left: 18px; display: grid; gap: 8px; font-size: 15px; }
+.careers-sources { margin-top: 12px; overflow-wrap: anywhere; }
+
+/* Academies. */
+.careers-timeline { list-style: none; margin: 0; padding: 0 0 0 18px; border-left: 2px solid var(--line); display: grid; gap: 14px; }
+.careers-timeline li { position: relative; }
+.careers-timeline li::before {
+  content: ""; position: absolute; left: -25px; top: 3px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--bg);
+}
+.careers-timeline p { margin: 2px 0 0; font-size: 15px; }
+.careers-academy .list { margin-bottom: 4px; }
+
+/* Job bases. */
+.careers-map { height: 46vh; min-height: 300px; margin-top: 14px; }
+
+@media (max-width: 480px) {
+  .careers-cmp-cell { padding: 6px 8px 10px; font-size: 13px; }
+  .careers-cmp-head strong { font-size: 15px; }
+}

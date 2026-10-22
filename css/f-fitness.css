@@ -1,0 +1,100 @@
+/* Fitness pages: PT score calculator, PT tracker and boot camp prep plan. */
+
+.fit-page .fit-card { margin-top: 16px; }
+.fit-branches { margin: 16px 0 4px; }
+.fit-branches .seg-item { display: inline-flex; align-items: center; gap: 4px; }
+.fit-branches .seg-item:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fit-branch-name {
+  font: 600 12px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--hero, var(--accent)) 50%, var(--text));
+}
+.fit-card h2 { margin: 6px 0 10px; }
+.fit-small { font-size: 14px; }
+.fit-field { display: grid; gap: 6px; min-width: 0; }
+.fit-label { font-weight: 600; font-size: 14px; }
+.fit-hint { font-size: 13px; color: var(--muted); }
+
+.fit-events { display: grid; gap: 12px; margin-top: 18px; }
+.fit-event {
+  background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--hero, var(--accent));
+  border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0;
+}
+.fit-event p { margin: 0; }
+.fit-event-name { font-size: 17px; margin: 0; }
+.fit-event-inputs, .fit-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.fit-event-out { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-size: 14px; }
+.fit-event-out:empty { display: none; }
+.fit-points { font: 700 16px/1.3 var(--mono); }
+.fit-ok { color: var(--accent); font-weight: 700; }
+.fit-bad { color: var(--danger); font-weight: 700; }
+
+.fit-check-row { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; cursor: pointer; }
+.fit-check-row input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--accent); cursor: pointer; }
+.fit-check-row input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.fit-summary { margin-top: 20px; display: grid; gap: 14px; }
+.fit-summary p { margin: 0; }
+.fit-result { margin-bottom: 0; display: grid; gap: 6px; }
+.fit-total { font: 800 24px/1.2 var(--sans); }
+.fit-category { font-weight: 600; }
+.fit-verdict { font-size: 18px; }
+
+.fit-sources { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.fit-sources a { overflow-wrap: anywhere; }
+.fit-notes-card .list { font-size: 14px; }
+.fit-note { margin: 14px 0; }
+.fit-field { align-content: start; }
+
+/* PT tracker. */
+.fit-status { margin: 12px 0 0; font-size: 14px; min-height: 1em; }
+.fit-status:empty { display: none; }
+.fit-charts { display: grid; gap: 0; }
+.fit-chart-title { font-size: 20px; margin: 0 0 6px; }
+.fit-chart { display: block; width: 100%; height: auto; margin: 6px 0 4px; overflow: visible; }
+.fit-grid { stroke: var(--line); stroke-width: 1; }
+.fit-axis { fill: var(--muted); font: 13px var(--mono); }
+.fit-line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.fit-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.fit-ref { stroke-width: 2; stroke-dasharray: 7 6; }
+.fit-ref.min { stroke: var(--warn); }
+.fit-ref.max { stroke: var(--muted); }
+.fit-legend { line-height: 1.8; }
+.fit-key { display: inline-block; width: 22px; height: 0; border-top: 3px dashed; vertical-align: middle; margin-right: 8px; }
+.fit-key.min { border-color: var(--warn); }
+.fit-key.max { border-color: var(--muted); }
+.fit-entries { margin-top: 10px; font-size: 14px; }
+.fit-entries summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.fit-entries summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fit-entry-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.fit-entry-list li {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+  padding: 6px 0 6px 12px; border-bottom: 1px solid var(--line);
+}
+.fit-entry-list strong { font-family: var(--mono); }
+.fit-delete { padding: 6px 12px; font-size: 14px; line-height: 1; }
+.fit-danger { border-color: var(--danger); color: var(--danger); }
+@media (hover: hover) { .fit-danger:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--panel-2)); } }
+.fit-confirm { margin-top: 14px; }
+.fit-confirm p { margin: 0 0 12px; }
+
+/* Prep plan. */
+.fit-safety { margin-top: 16px; }
+.fit-items { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+.fit-progress { margin: 8px 0 18px; }
+.fit-weeks { margin-top: 16px; }
+.fit-week summary { padding: 2px 0; }
+.fit-week summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 6px; }
+.fit-week-count { margin-left: auto; font: 600 13px var(--mono); color: var(--muted); }
+.fit-sessions { display: grid; gap: 14px; margin-top: 12px; }
+.fit-session { border-top: 1px solid var(--line); padding-top: 10px; }
+.fit-session .fit-check-row { margin-top: 0; }
+.fit-session .fit-items { margin-left: 30px; }
+
+@media (max-width: 480px) {
+  .fit-event { padding: 12px; }
+  .fit-total { font-size: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fit-progress > div { transition: none; }
+}

@@ -119,16 +119,19 @@ function renderFooter() {
 
 function render() {
   parseRoute();
+  document.documentElement.dataset.page = route.page;
   renderNav();
   setBackground(null);
   app.replaceChildren();
-  if (route.page === "branches") renderBranches();
+  if (PAGES[route.page]) PAGES[route.page].render();
+  else if (route.page === "branches") renderBranches();
   else if (route.page === "branch") renderBranch();
   else if (route.page === "types") renderTypes();
   else if (route.page === "training") renderTraining();
   else if (route.page === "shared") renderShared();
   else if (route.page === "compare") renderCompare();
   else if (route.page === "fun") renderFun();
+  else if (route.page === "learn") renderLearn();
   else if (route.page === "jobs") renderJobs();
   else if (route.page === "pay") renderPay();
   else if (route.page === "join") renderJoin();
@@ -140,9 +143,10 @@ function render() {
   else if (route.page === "result") (state.step >= QUESTIONS.length ? renderResults() : renderIntro());
   else if (state.step >= 0 && state.step < QUESTIONS.length) (state.mode === "bingo" ? renderBingoPlay() : renderQuestion());
   else renderIntro();
-  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare"), feedback: T("Feedback"), map: T("Installation map"), result: T("Your result") };
+  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare"), feedback: T("Feedback"), map: T("Installation map"), result: T("Your result"), learn: T("Learn") };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name
-    : route.page === "jobs" || route.page === "job" ? T("{branch} jobs", { branch: BRANCHES[route.branch].name }) : titles[route.page];
+    : route.page === "jobs" || route.page === "job" ? T("{branch} jobs", { branch: BRANCHES[route.branch].name })
+    : PAGES[route.page] ? PAGES[route.page].title() : titles[route.page];
   document.title = pageTitle ? `${pageTitle} · ${T("Ranked Bingo")}` : T("Ranked Bingo");
   window.scrollTo({ top: 0 });
 }
@@ -154,6 +158,9 @@ function renderIntro() {
   const total = (m) => m.trait + m.interest + m.role + m.service;
   const resumable = state.resumeStep != null;
   const finished = state.step >= QUESTIONS.length;
+  app.append(el("div", { class: "note start-cta fade-in" },
+    el("span", {}, T("Thinking about the military? See every step, from this quiz to talking with recruiters.")),
+    el("a", { class: "button primary", href: "#/start" }, T("Start here →"))));
   app.append(el("div", { class: "card fade-in" },
     el("div", { class: "eyebrow" }, T("Ranked Bingo")),
     el("h1", {}, T("Which military branch fits you?")),
@@ -323,6 +330,7 @@ function bar(label, pct, color) {
 // set when viewing someone else's shared result.
 function resultView({ qs, answers, mine = false, name = null, quick = false }) {
   const r = computeResult(qs, answers);
+  loadQrLib().catch(() => { /* cards are drawn without the QR code */ });
   const { ranked, top, tied, user, components, tracks, track, options } = r;
   const isTie = tied.length > 1;
   setBackground(top.id, encodeAnswers(qs, answers));
@@ -467,6 +475,11 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
       class: "button", href: recruiterLink(x.id, components[0].id), target: "_blank", rel: "noopener",
     }, T("Find a {branch} recruiter ↗", { branch: serviceOption(x.id, components[0].id).title })))),
 
+    mine && loadJson("rankedbingo.games.predict.pending", []).length
+      ? el("div", { class: "note" }, T("🔮 A friend predicted your branch. "), el("a", { href: "#/predict/check" }, T("Open the envelope →")))
+      : null,
+    mine ? firstYears(r) : null,
+    mine ? resultHistory() : null,
     mine ? shareSection(r) : null,
 
     el("div", { class: "actions" },
@@ -921,6 +934,9 @@ async function renderCard(r, name, format, withPhoto) {
   ctx.textAlign = "right";
   ctx.fillText(siteUrl().replace(/^https?:\/\//, "").replace(/\/$/, ""), W - PAD, H - 48);
   ctx.textAlign = "left";
+  // QR code into the quiz, above the address.
+  const qrSize = format === "long" ? 220 : 170;
+  drawQr(ctx, `${siteUrl()}#/quiz`, W - PAD - qrSize, H - 48 - 34 - qrSize, qrSize);
   ctx.restore();
   return canvas;
 }
@@ -1016,21 +1032,32 @@ function parseRoute() {
   route.jobTrack = params.get("track");
   route.jobId = route.page === "job" ? decodeURIComponent(parts[2] || "") : null;
   if ((route.page === "branch" || route.page === "jobs" || route.page === "job") && !route.branch) route.page = "branches";
-  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join", "asvab", "squad", "feedback", "map", "result"].includes(route.page)) route.page = "quiz";
+  // Registered feature pages (js/pages.js) get the rest of the path and the query.
+  route.parts = parts.slice(1);
+  route.params = params;
+  if (!PAGES[route.page] && !["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "learn", "jobs", "job", "pay", "join", "asvab", "squad", "feedback", "map", "result"].includes(route.page)) route.page = "quiz";
 }
 
 function branchLink(branch, track = "enlisted", type = "active") {
   return `#/branch/${branch}?track=${track}&type=${type}`;
 }
 
+let settingsOpen = false;
+
 function renderNav() {
   const nav = document.getElementById("nav");
-  const tabs = [["quiz", T("Quiz")], ["branches", T("Branches")], ["types", T("Service")], ["training", T("Training")], ["pay", T("Pay")], ["join", T("Join")], ["map", T("Map")], ["fun", T("Fun")]];
-  const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page === "asvab" ? "join" : route.page === "result" ? "quiz" : route.page;
+  nav.setAttribute("aria-label", T("Sections"));
+  const tabs = [["quiz", T("Quiz")], ["branches", T("Branches")], ["learn", T("Learn")], ["types", T("Service")], ["training", T("Training")], ["pay", T("Pay")], ["join", T("Join")], ["map", T("Map")], ["fun", T("Fun")]];
+  const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page === "asvab" ? "join" : route.page === "result" ? "quiz"
+    : PAGES[route.page] ? PAGES[route.page].tab || PAGES[route.page].hub || "quiz" : route.page;
   const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
   nav.replaceChildren(
     el("div", { class: "nav-top" },
       el("a", { class: "brand", href: "#/quiz" }, T("Ranked Bingo")),
+    el("button", {
+      class: "theme-toggle", "aria-label": T("Display settings"), "aria-expanded": String(settingsOpen),
+      onclick: () => { settingsOpen = !settingsOpen; renderNav(); },
+    }, "⚙️"),
     el("button", {
       class: "theme-toggle", "aria-label": theme === "light" ? T("Switch to dark mode") : T("Switch to light mode"),
       onclick: () => {
@@ -1042,9 +1069,25 @@ function renderNav() {
     }, theme === "light" ? "🌙" : "☀️"),
       el("select", { class: "lang-select", "aria-label": T("Language"), onchange: (e) => setLanguage(e.target.value) },
         LANGUAGES.map(([code, label]) => el("option", { value: code, selected: code === LANG }, label)))),
+    ...(settingsOpen ? [settingsPanel()] : []),
     el("div", { class: "tabs" }, tabs.map(([id, label]) =>
       el("a", { class: "tab" + (current === id ? " active" : ""), href: `#/${id}`, "aria-current": current === id ? "page" : null }, label))),
   );
+}
+
+// Learn hub: guides from feature modules plus the built-in explainer pages.
+function renderLearn() {
+  app.append(el("div", { class: "fade-in" },
+    el("div", { class: "eyebrow" }, T("Learn")),
+    el("h1", {}, T("Guides")),
+    el("p", { class: "muted" }, T("Plain-English guides to how the military works, from the day you visit a recruiter to the benefits you earn.")),
+    hubCards("learn"),
+    el("div", { class: "section-title" }, T("More explainers")),
+    el("div", { class: "actions", style: "margin-top:0" },
+      el("a", { class: "button", href: "#/types" }, T("Service types")),
+      el("a", { class: "button", href: "#/training" }, T("Boot camp & training")),
+      el("a", { class: "button", href: "#/pay" }, T("Ranks & pay")),
+      el("a", { class: "button", href: "#/join" }, T("Can I join?")))));
 }
 
 function renderBranches() {

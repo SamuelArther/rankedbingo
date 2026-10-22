@@ -1,0 +1,15 @@
+/* "Start here" roadmap. */
+.roadmap-head { display: grid; gap: 6px; margin: 14px 0 6px; }
+.roadmap-progress { margin: 0; }
+.roadmap-phase { margin-top: 8px; }
+.roadmap-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.roadmap-step { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.roadmap-num { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--accent); color: var(--text); font: 700 15px var(--mono); }
+.roadmap-step.done { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.roadmap-step.done .roadmap-num { background: var(--accent); color: var(--accent-ink); }
+.roadmap-title { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 17px; }
+.roadmap-title input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; margin: 0; }
+.roadmap-body p { margin: 6px 0 10px; font-size: 15px; }
+.roadmap-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.roadmap-links .button { padding: 8px 12px; font-size: 14px; }
+.start-cta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; }
