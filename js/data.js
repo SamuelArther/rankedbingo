@@ -1016,9 +1016,10 @@ const DETAILS = {
       where: "Fort Jackson (South Carolina), Fort Benning (Georgia), Fort Leonard Wood (Missouri) or Fort Sill (Oklahoma)",
       leaders: "Drill sergeants",
       phases: [
-        ["First weeks", "Drill sergeants, haircuts, uniforms, discipline, fitness and Army values."],
-        ["Middle weeks", "Rifle marksmanship, combat skills, first aid and land navigation."],
-        ["Final weeks", "Field exercises, then a multi-day final field test before graduation."],
+        ["Yellow phase (weeks 1-2)", "Drill sergeants, Army values, discipline, teamwork and the start of physical and tactical training."],
+        ["Red phase (weeks 3-4)", "Your weapon, hand-to-hand combat, lifesaving skills and the first field exercise, \"The Hammer.\""],
+        ["White phase (weeks 5-7)", "Rifle marksmanship and a two-day, two-night field exercise, \"The Anvil.\""],
+        ["Blue phase (weeks 8-10)", "Machine guns, grenades and maneuvers, ending with \"The Forge,\" a multi-day final field test."],
       ],
     },
     tech: {
@@ -1173,11 +1174,11 @@ const BG_PHOTOS = {
     { src: "images/army.jpg", focus: [0.63, 0.5] },   // lead soldier and convoy in the snow
     { src: "images/army2.jpg", focus: [0.45, 0.45] }, // howitzer crew firing
     { src: "images/army3.jpg", focus: [0.35, 0.4] },  // soldier aiming from a fighting position
-    { src: "images/army4.jpg", focus: [0.38, 0.5] },  // Ranger on the rope course
+    { src: "images/army4.jpg", focus: [0.6, 0.5] },   // 75th Ranger Regiment live-fire exercise
   ],
   usmc: [
     { src: "images/usmc.jpg", focus: [0.5, 0.45] },   // Marines advancing toward the blast
-    { src: "images/usmc2.jpg", focus: [0.35, 0.5] },  // clay target shooting off a ship
+    { src: "images/usmc2.jpg", focus: [0.46, 0.5] },  // night live fire with tracers
     { src: "images/usmc3.jpg", focus: [0.6, 0.5] },   // CH-53 refueling in flight with a sling load
     { src: "images/usmc4.jpg", focus: [0.45, 0.5] },  // team moving with night vision
   ],
@@ -1194,8 +1195,8 @@ const BG_PHOTOS = {
     { src: "images/af4.jpg", focus: [0.5, 0.5] },    // F-15EX formation
   ],
   sf: [
-    { src: "images/sf.jpg", focus: [0.55, 0.4] },    // two Guardians
-    { src: "images/sf2.jpg", focus: [0.6, 0.45] },   // satellite dishes
+    { src: "images/sf.jpg", focus: [0.32, 0.5] },    // Falcon 9 launch, Cape Canaveral SFS
+    { src: "images/sf2.jpg", focus: [0.48, 0.7] },   // liftoff fireball, Cape Canaveral SFS
     { src: "images/sf3.jpg", focus: [0.5, 0.42] },   // dish inside a radome, Kaena Point
     { src: "images/sf4.jpg", focus: [0.5, 0.5] },    // radome, New Boston
   ],
