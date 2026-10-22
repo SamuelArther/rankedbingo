@@ -42,6 +42,10 @@ Besides the quiz, the site has:
 - **Join:** an eligibility check (age, education, ASVAB, citizenship), each branch's requirements, and each branch's fitness test with a "check your numbers" comparison.
 - **Fun:** boot camp bingo, a phonetic alphabet speed game, a slang glossary, history timelines, famous people who served, major bases, and badges.
 - **On results:** questions to ask a recruiter, and print or save as PDF.
+- **Installation map:** about 1,000 U.S. military installations worldwide, pinned in branch colors, each with a short description and a Google Maps link. Filter by branch or Active Duty, Reserve and National Guard, or search by name, state or country. U.S. sites come from the DoD/USDOT NTAD Military Bases dataset (FY2024, with the 2025 fort renamings); overseas and Coast Guard sites were added from official base websites. Only publicly listed installations. Map tiles © OpenStreetMap contributors (built with `tools/build_bases.py`).
+- **ASVAB practice:** 20 original practice questions in the style of the ASVAB's sections, with a score per section and every answer explained.
+- **Squad compare:** paste several friends' result links to see the whole group's split and the branch it matches best.
+- **Feedback:** a form in the site's own style that sends answers to a Google Form.
 
 - **Branches:** a page per branch covering what it does, what life is like, who it fits, and quick facts. A path picker (enlisted or officer, and Active Duty, Reserve or National Guard) explains that path step by step and lists example jobs with their training.
 - **Service types:** Active Duty, Reserve and National Guard explained, plus a table of which branch has what.

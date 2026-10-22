@@ -124,10 +124,11 @@ function render() {
   else if (route.page === "asvab") renderAsvab();
   else if (route.page === "squad") renderSquad();
   else if (route.page === "feedback") renderFeedback();
+  else if (route.page === "map") renderMap();
   else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) (state.mode === "bingo" ? renderBingoPlay() : renderQuestion());
   else renderResults();
-  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare"), feedback: T("Feedback") };
+  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare"), feedback: T("Feedback"), map: T("Installation map") };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name
     : route.page === "jobs" || route.page === "job" ? T("{branch} jobs", { branch: BRANCHES[route.branch].name }) : titles[route.page];
   document.title = pageTitle ? `${pageTitle} · ${T("Ranked Bingo")}` : T("Ranked Bingo");
@@ -995,7 +996,7 @@ function parseRoute() {
   route.jobTrack = params.get("track");
   route.jobId = route.page === "job" ? decodeURIComponent(parts[2] || "") : null;
   if ((route.page === "branch" || route.page === "jobs" || route.page === "job") && !route.branch) route.page = "branches";
-  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join", "asvab", "squad", "feedback"].includes(route.page)) route.page = "quiz";
+  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join", "asvab", "squad", "feedback", "map"].includes(route.page)) route.page = "quiz";
 }
 
 function branchLink(branch, track = "enlisted", type = "active") {
@@ -1004,7 +1005,7 @@ function branchLink(branch, track = "enlisted", type = "active") {
 
 function renderNav() {
   const nav = document.getElementById("nav");
-  const tabs = [["quiz", T("Quiz")], ["branches", T("Branches")], ["types", T("Service")], ["training", T("Training")], ["pay", T("Pay")], ["join", T("Join")], ["fun", T("Fun")]];
+  const tabs = [["quiz", T("Quiz")], ["branches", T("Branches")], ["types", T("Service")], ["training", T("Training")], ["pay", T("Pay")], ["join", T("Join")], ["map", T("Map")], ["fun", T("Fun")]];
   const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page === "asvab" ? "join" : route.page;
   const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
   nav.replaceChildren(
@@ -1141,7 +1142,8 @@ function renderBranch() {
     el("div", { class: "actions" },
       el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz")),
       el("a", { class: "button", href: recruiterLink(b, type), target: "_blank", rel: "noopener" }, T("Find a {branch} recruiter ↗", { branch: option.title })),
-      el("a", { class: "button", href: "#/training" }, T("Compare all boot camps"))),
+      el("a", { class: "button", href: "#/training" }, T("Compare all boot camps")),
+      el("a", { class: "button", href: `#/map/${b}` }, T("{branch} bases on the map", { branch: info.name }))),
   ));
 }
 

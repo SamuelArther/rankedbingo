@@ -345,6 +345,23 @@ button.bingo-cell:disabled { cursor: default; opacity: 1; }
 /* Info pages. */
 .field { display: grid; gap: 6px; }
 form.card .field { margin-top: 16px; }
+
+/* Installation map. */
+.map-box { height: 62vh; min-height: 360px; margin: 4px 0 12px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel-2); }
+.map-chip { display: inline-flex; align-items: center; gap: 6px; }
+.map-chip .map-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hero); }
+.map-chip:not(.active) { opacity: 0.55; }
+.map-chip:not(.active) .map-dot { background: transparent; border: 2px solid var(--hero); }
+.leaflet-container { font: inherit; }
+:root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6); }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-tooltip { background: var(--panel); color: var(--text); border-color: var(--line); }
+.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+.leaflet-bar a, .leaflet-bar a:hover { background: var(--panel); color: var(--text); border-color: var(--line); }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--panel) 85%, transparent) !important; color: var(--muted); }
+.leaflet-control-attribution a { color: var(--accent); }
+.base-popup strong { display: block; font-size: 16px; margin: 2px 0; }
+.base-popup p { margin: 8px 0; }
+button.job-row { width: 100%; text-align: start; font: inherit; }
 .field-label { font-weight: 600; }
 textarea.text-input { resize: vertical; font: inherit; }
 select.text-input { appearance: auto; }
