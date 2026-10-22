@@ -1667,5 +1667,8 @@
  "Training area or range": "Área de treinamento ou estande",
  "U.S. sites come from the Defense Department's public list of installations (fiscal year 2024, with 2025 name changes). Overseas and Coast Guard sites were added from official base websites. Pins mark the main area of each site, not its exact boundary.": "Os locais nos EUA vêm da lista pública de instalações do Departamento de Defesa (ano fiscal de 2024, com as mudanças de nome de 2025). Os locais no exterior e da Guarda Costeira foram adicionados a partir de sites oficiais das bases. Os marcadores mostram a área principal de cada local, não o limite exato.",
  "U.S. military bases, airfields and training areas around the world. Tap a pin to see what it does.": "Bases, aeródromos e áreas de treinamento militares dos EUA pelo mundo. Toque em um marcador para ver o que ele faz.",
- "{branch} bases on the map": "Bases de {branch} no mapa"
+ "{branch} bases on the map": "Bases de {branch} no mapa",
+ "Your result": "Seu resultado",
+ "Your last result is saved.": "Seu último resultado está salvo.",
+ "See my last result →": "Ver meu último resultado →"
 }

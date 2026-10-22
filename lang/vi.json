@@ -1667,5 +1667,8 @@
  "Training area or range": "Khu huấn luyện hoặc trường bắn",
  "U.S. sites come from the Defense Department's public list of installations (fiscal year 2024, with 2025 name changes). Overseas and Coast Guard sites were added from official base websites. Pins mark the main area of each site, not its exact boundary.": "Các căn cứ ở Mỹ lấy từ danh sách công khai của Bộ Quốc phòng (năm tài chính 2024, có cập nhật đổi tên năm 2025). Các căn cứ ở nước ngoài và của Tuần duyên được bổ sung từ trang web chính thức của căn cứ. Ghim đánh dấu khu vực chính của mỗi căn cứ, không phải ranh giới chính xác.",
  "U.S. military bases, airfields and training areas around the world. Tap a pin to see what it does.": "Các căn cứ, sân bay và khu huấn luyện của quân đội Mỹ trên khắp thế giới. Chạm vào ghim để xem nơi đó làm gì.",
- "{branch} bases on the map": "Căn cứ của {branch} trên bản đồ"
+ "{branch} bases on the map": "Căn cứ của {branch} trên bản đồ",
+ "Your result": "Kết quả của bạn",
+ "Your last result is saved.": "Kết quả gần nhất của bạn đã được lưu.",
+ "See my last result →": "Xem kết quả gần nhất →"
 }

@@ -1667,5 +1667,8 @@
  "Training area or range": "منطقة تدريب أو ميدان رماية",
  "U.S. sites come from the Defense Department's public list of installations (fiscal year 2024, with 2025 name changes). Overseas and Coast Guard sites were added from official base websites. Pins mark the main area of each site, not its exact boundary.": "المواقع داخل الولايات المتحدة مأخوذة من القائمة العامة للمنشآت لدى وزارة الدفاع (السنة المالية 2024، مع تغييرات الأسماء في 2025). أُضيفت المواقع الخارجية ومواقع خفر السواحل من المواقع الرسمية للقواعد. تشير العلامات إلى المنطقة الرئيسية لكل موقع، لا إلى حدوده الدقيقة.",
  "U.S. military bases, airfields and training areas around the world. Tap a pin to see what it does.": "القواعد والمطارات ومناطق التدريب العسكرية الأمريكية حول العالم. اضغط على علامة لترى ما الذي يُفعل فيها.",
- "{branch} bases on the map": "قواعد {branch} على الخريطة"
+ "{branch} bases on the map": "قواعد {branch} على الخريطة",
+ "Your result": "نتيجتك",
+ "Your last result is saved.": "نتيجتك الأخيرة محفوظة.",
+ "See my last result →": "اعرض نتيجتي الأخيرة ←"
 }

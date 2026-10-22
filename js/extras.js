@@ -177,7 +177,7 @@ function renderBingoPlay() {
           state.step = QUESTIONS.length;
           recordQuizDone(QUESTIONS, state.answers, state.mode);
           save();
-          render();
+          showResults();
         },
       }, checked < MIN_BINGO_CHECKS ? T("Check at least {count}", { count: MIN_BINGO_CHECKS }) : T("Done"))),
   ));

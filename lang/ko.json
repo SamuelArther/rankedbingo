@@ -1667,5 +1667,8 @@
  "Training area or range": "훈련장 또는 사격장",
  "U.S. sites come from the Defense Department's public list of installations (fiscal year 2024, with 2025 name changes). Overseas and Coast Guard sites were added from official base websites. Pins mark the main area of each site, not its exact boundary.": "미국 내 시설은 국방부가 공개한 시설 목록(2024 회계연도, 2025년 명칭 변경 반영)에서 가져왔어요. 해외 및 해안경비대 시설은 공식 기지 웹사이트를 참고해 추가했어요. 핀은 각 시설의 정확한 경계가 아니라 주요 구역을 표시해요.",
  "U.S. military bases, airfields and training areas around the world. Tap a pin to see what it does.": "전 세계의 미군 기지, 비행장, 훈련장이에요. 핀을 누르면 무슨 일을 하는 곳인지 볼 수 있어요.",
- "{branch} bases on the map": "지도에서 {branch} 기지 보기"
+ "{branch} bases on the map": "지도에서 {branch} 기지 보기",
+ "Your result": "내 결과",
+ "Your last result is saved.": "마지막 결과가 저장되어 있어요.",
+ "See my last result →": "마지막 결과 보기 →"
 }

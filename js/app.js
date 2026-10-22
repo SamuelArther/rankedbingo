@@ -71,11 +71,23 @@ function newQuiz(mode) {
   state.step = -1;
 }
 
+// Shows a page, re-rendering if it's already the current one.
+function goTo(hash) {
+  if (location.hash === hash) render();
+  else location.hash = hash;
+}
+
 function startQuiz(mode) {
   if (mode !== state.mode || state.step !== -1) newQuiz(mode);
   state.step = 0;
   save();
-  render();
+  goTo("#/quiz");
+}
+
+// A finished quiz's results have their own page, so the Quiz tab can always
+// go back to the start screen.
+function showResults() {
+  goTo("#/result");
 }
 
 // On load, pick up a saved quiz if there is one; otherwise draw a new one.
@@ -125,10 +137,10 @@ function render() {
   else if (route.page === "squad") renderSquad();
   else if (route.page === "feedback") renderFeedback();
   else if (route.page === "map") renderMap();
-  else if (state.step < 0) renderIntro();
-  else if (state.step < QUESTIONS.length) (state.mode === "bingo" ? renderBingoPlay() : renderQuestion());
-  else renderResults();
-  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare"), feedback: T("Feedback"), map: T("Installation map") };
+  else if (route.page === "result") (state.step >= QUESTIONS.length ? renderResults() : renderIntro());
+  else if (state.step >= 0 && state.step < QUESTIONS.length) (state.mode === "bingo" ? renderBingoPlay() : renderQuestion());
+  else renderIntro();
+  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare"), feedback: T("Feedback"), map: T("Installation map"), result: T("Your result") };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name
     : route.page === "jobs" || route.page === "job" ? T("{branch} jobs", { branch: BRANCHES[route.branch].name }) : titles[route.page];
   document.title = pageTitle ? `${pageTitle} · ${T("Ranked Bingo")}` : T("Ranked Bingo");
@@ -141,6 +153,7 @@ function renderIntro() {
   const full = MODES.full, quick = MODES.quick;
   const total = (m) => m.trait + m.interest + m.role + m.service;
   const resumable = state.resumeStep != null;
+  const finished = state.step >= QUESTIONS.length;
   app.append(el("div", { class: "card fade-in" },
     el("div", { class: "eyebrow" }, T("Ranked Bingo")),
     el("h1", {}, T("Which military branch fits you?")),
@@ -151,6 +164,9 @@ function renderIntro() {
         el("span", { class: "dot", style: `background:${BRANCHES[b].color}` }), BRANCHES[b].name))),
     resumable
       ? el("div", { class: "note", style: "margin-bottom:14px" }, state.mode === "bingo" ? T("You have a bingo card in progress.") : T("You have a quiz in progress (question {n} of {total}).", { n: state.resumeStep + 1, total: QUESTIONS.length }))
+      : null,
+    finished
+      ? el("div", { class: "note", style: "margin-bottom:14px" }, T("Your last result is saved."), " ", el("a", { href: "#/result" }, T("See my last result →")))
       : null,
     el("div", { class: "actions", style: "margin-top:0" },
       resumable
@@ -240,9 +256,13 @@ function autoAdvance() {
 function next() {
   if (state.answers[state.step] == null && !state.skipped.has(state.step)) return;
   state.step += 1;
-  if (state.step === QUESTIONS.length) recordQuizDone(QUESTIONS, state.answers, state.mode);
   save();
-  render();
+  if (state.step === QUESTIONS.length) {
+    recordQuizDone(QUESTIONS, state.answers, state.mode);
+    showResults();
+  } else {
+    render();
+  }
 }
 
 function back() {
@@ -265,7 +285,7 @@ function renderResults() {
       el("p", { class: "muted" },
         T("You answered {answered} of {total} questions. Answer at least {min} so there's enough to match you on.", { answered, total: QUESTIONS.length, min: minAnswers(QUESTIONS) })),
       el("div", { class: "actions" },
-        el("button", { class: "primary", onclick: () => { state.step = state.skipped.size ? Math.min(...state.skipped) : 0; render(); } }, T("Go back to skipped questions")),
+        el("button", { class: "primary", onclick: () => { state.step = state.skipped.size ? Math.min(...state.skipped) : 0; save(); goTo("#/quiz"); } }, T("Go back to skipped questions")),
         el("button", { onclick: restart }, T("Start over"))),
     ));
     return;
@@ -935,7 +955,7 @@ async function shareImage(r, name, format, useShareSheet) {
 function restart() {
   newQuiz(state.mode);
   save();
-  render();
+  goTo("#/quiz");
 }
 
 document.addEventListener("keydown", (e) => {
@@ -996,7 +1016,7 @@ function parseRoute() {
   route.jobTrack = params.get("track");
   route.jobId = route.page === "job" ? decodeURIComponent(parts[2] || "") : null;
   if ((route.page === "branch" || route.page === "jobs" || route.page === "job") && !route.branch) route.page = "branches";
-  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join", "asvab", "squad", "feedback", "map"].includes(route.page)) route.page = "quiz";
+  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join", "asvab", "squad", "feedback", "map", "result"].includes(route.page)) route.page = "quiz";
 }
 
 function branchLink(branch, track = "enlisted", type = "active") {
@@ -1006,7 +1026,7 @@ function branchLink(branch, track = "enlisted", type = "active") {
 function renderNav() {
   const nav = document.getElementById("nav");
   const tabs = [["quiz", T("Quiz")], ["branches", T("Branches")], ["types", T("Service")], ["training", T("Training")], ["pay", T("Pay")], ["join", T("Join")], ["map", T("Map")], ["fun", T("Fun")]];
-  const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page === "asvab" ? "join" : route.page;
+  const current = ["branch", "jobs", "job"].includes(route.page) ? "branches" : route.page === "asvab" ? "join" : route.page === "result" ? "quiz" : route.page;
   const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
   nav.replaceChildren(
     el("div", { class: "nav-top" },

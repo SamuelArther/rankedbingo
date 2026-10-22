@@ -1667,5 +1667,8 @@
  "Training area or range": "训练区或靶场",
  "U.S. sites come from the Defense Department's public list of installations (fiscal year 2024, with 2025 name changes). Overseas and Coast Guard sites were added from official base websites. Pins mark the main area of each site, not its exact boundary.": "美国境内的设施来自国防部公开的设施清单（2024 财年，已更新 2025 年的更名）。海外和海岸警卫队设施取自各基地官网。标记显示的是每处设施的主要区域，而非其确切边界。",
  "U.S. military bases, airfields and training areas around the world. Tap a pin to see what it does.": "美军在世界各地的基地、机场和训练区。点按标记，看看它是做什么的。",
- "{branch} bases on the map": "地图上的{branch}基地"
+ "{branch} bases on the map": "地图上的{branch}基地",
+ "Your result": "你的结果",
+ "Your last result is saved.": "你上次的结果已保存。",
+ "See my last result →": "查看上次的结果 →"
 }
