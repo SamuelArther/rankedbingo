@@ -1196,6 +1196,8 @@ const BG_PHOTOS = {
   sf: [
     { src: "images/sf.jpg", focus: [0.55, 0.4] },    // two Guardians
     { src: "images/sf2.jpg", focus: [0.6, 0.45] },   // satellite dishes
+    { src: "images/sf3.jpg", focus: [0.5, 0.42] },   // dish inside a radome, Kaena Point
+    { src: "images/sf4.jpg", focus: [0.5, 0.5] },    // radome, New Boston
   ],
   cg: [
     { src: "images/cg.jpg", focus: [0.57, 0.58] },   // response boat
