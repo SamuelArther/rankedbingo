@@ -66,6 +66,7 @@ const BADGES = [
   { id: "explorer", icon: "🧭", name: "Explorer", desc: "Visit all six branch pages." },
   { id: "recruiter", icon: "📣", name: "Recruiter", desc: "Share your result." },
   { id: "squad", icon: "👥", name: "Squad goals", desc: "Compare results with a friend." },
+  { id: "feedback", icon: "📬", name: "Mail call", desc: "Send feedback." },
   { id: "graduate", icon: "🎓", name: "Boot camp grad", desc: "Get a bingo in boot camp bingo." },
   { id: "phonetic", icon: "📻", name: "Phonetic pro", desc: "Score 20 in the phonetic alphabet challenge." },
 ];

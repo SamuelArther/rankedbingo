@@ -98,6 +98,13 @@ function myResultCode() {
 
 // ---------------------------------------------------------------------------
 
+function renderFooter() {
+  document.getElementById("footer").replaceChildren(
+    el("p", {}, T("Just for fun. Not affiliated with or endorsed by the U.S. military or any branch. Talk to a recruiter from each branch you're interested in before deciding anything.")),
+    el("p", {}, el("a", { href: feedbackLink() }, T("Send feedback"))),
+  );
+}
+
 function render() {
   parseRoute();
   renderNav();
@@ -116,10 +123,11 @@ function render() {
   else if (route.page === "job") renderJob();
   else if (route.page === "asvab") renderAsvab();
   else if (route.page === "squad") renderSquad();
+  else if (route.page === "feedback") renderFeedback();
   else if (state.step < 0) renderIntro();
   else if (state.step < QUESTIONS.length) (state.mode === "bingo" ? renderBingoPlay() : renderQuestion());
   else renderResults();
-  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare") };
+  const titles = { branches: T("Branches"), types: T("Service types"), training: T("Boot camp & training"), shared: T("Shared result"), compare: T("Compare results"), fun: T("Fun"), pay: T("Ranks & pay"), join: T("Can I join?"), asvab: T("ASVAB practice"), squad: T("Squad compare"), feedback: T("Feedback") };
   const pageTitle = route.page === "branch" ? BRANCHES[route.branch].name
     : route.page === "jobs" || route.page === "job" ? T("{branch} jobs", { branch: BRANCHES[route.branch].name }) : titles[route.page];
   document.title = pageTitle ? `${pageTitle} · ${T("Ranked Bingo")}` : T("Ranked Bingo");
@@ -446,7 +454,8 @@ function resultView({ qs, answers, mine = false, name = null, quick = false }) {
            el("button", { onclick: () => { newQuiz("quick"); startQuiz("quick"); } }, T("Quick mode (15 questions)")),
            el("button", { onclick: () => { newQuiz("bingo"); startQuiz("bingo"); } }, T("Bingo mode 🎯")),
            el("button", { onclick: (e) => copyResult(e, r) }, T("Copy my result")),
-           el("button", { onclick: () => window.print() }, T("Print / save as PDF"))]
+           el("button", { onclick: () => window.print() }, T("Print / save as PDF")),
+           el("a", { class: "button", href: feedbackLink(`${names} ${top.pct}% · ${shareLink(encodeAnswers(qs, answers))}`) }, T("Send feedback"))]
         : el("a", { class: "button primary", href: "#/quiz" }, T("Take the quiz yourself")),
       el("a", { class: "button", href: branchLink(top.id, tracks[0].id, components[0].id) }, T("Explore the {branch}", { branch: info.name }))),
   );
@@ -965,6 +974,7 @@ function parseRoute() {
   route.track = TRACK_ORDER.includes(params.get("track")) ? params.get("track") : "enlisted";
   route.type = COMPONENT_ORDER.includes(params.get("type")) ? params.get("type") : "active";
   // Shared results: #/r/<code>?n=Name and #/compare/<code>/<code>?a=Name&b=Name.
+  if (route.page === "feedback") route.result = params.get("r");
   if (route.page === "r") {
     route.page = "shared";
     route.code = parts[1] || "";
@@ -985,7 +995,7 @@ function parseRoute() {
   route.jobTrack = params.get("track");
   route.jobId = route.page === "job" ? decodeURIComponent(parts[2] || "") : null;
   if ((route.page === "branch" || route.page === "jobs" || route.page === "job") && !route.branch) route.page = "branches";
-  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join", "asvab", "squad"].includes(route.page)) route.page = "quiz";
+  if (!["quiz", "branches", "branch", "types", "training", "shared", "compare", "fun", "jobs", "job", "pay", "join", "asvab", "squad", "feedback"].includes(route.page)) route.page = "quiz";
 }
 
 function branchLink(branch, track = "enlisted", type = "active") {
@@ -1201,6 +1211,7 @@ window.branchQuiz = {
   get QUESTIONS() { return QUESTIONS; },
 };
 
+renderFooter();
 render();
 
 // Install as an app and work offline (only over https, like GitHub Pages).
