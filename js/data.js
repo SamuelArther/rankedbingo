@@ -59,7 +59,7 @@ const BRANCHES = {
   },
   cg: {
     name: "Coast Guard",
-    color: "#f08a3c",
+    color: "#3fd0c0",
     tagline: "Rescues and law enforcement on U.S. waters.",
     about: "In peacetime the Coast Guard is part of the Department of Homeland Security. It does search and rescue, stops drug smuggling, enforces maritime law and protects the environment, mostly close to U.S. coasts. It's small, and its missions happen at home.",
     traits: { sea: 2, land: -1, air: 0, space: -2, physical: 1, tech: 0, tradition: 0, travel: -2, homeland: 2, combat: -1, scale: -2, comfort: 0 },
