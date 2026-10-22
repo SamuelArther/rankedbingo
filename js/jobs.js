@@ -8,24 +8,49 @@
 const FULL_LIST_READY = true;
 
 let jobsLoading = null;
+let jobsReady = false;
+// True once the job lists are shown in the reader's language.
+let jobsTranslated = false;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error(`load failed: ${src}`));
+    document.head.append(s);
+  });
+}
+
+// Swaps in translated titles, fields, descriptions and training, keeping the
+// English title (official name) and field (used to match civilian careers).
+function applyJobTranslations(tr) {
+  for (const [branch, jobs] of Object.entries(window.FULL_JOBS)) {
+    for (const j of jobs) {
+      j.titleEn = j.title;
+      j.categoryEn = j.category;
+      Object.assign(j, (tr && tr[branch] && tr[branch][j.id]) || {});
+    }
+  }
+  jobsTranslated = !!tr;
+}
 
 function ensureJobsData() {
-  if (window.FULL_JOBS) return Promise.resolve();
+  if (jobsReady) return Promise.resolve();
   if (!jobsLoading) {
-    jobsLoading = new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "js/jobs-data.js";
-      s.onload = resolve;
-      s.onerror = () => { jobsLoading = null; reject(new Error("load failed")); };
-      document.head.append(s);
-    });
+    // A missing translation isn't an error: the lists stay in English.
+    const tr = LANG === "en" ? Promise.resolve(null)
+      : loadScript(`lang/jobs-${LANG}.js`).then(() => window.FULL_JOBS_TR, () => null);
+    jobsLoading = Promise.all([loadScript("js/jobs-data.js"), tr])
+      .then(([, translation]) => { applyJobTranslations(translation); jobsReady = true; })
+      .catch((e) => { jobsLoading = null; throw e; });
   }
   return jobsLoading;
 }
 
 // Renders `fn` once the job data is available, with a placeholder meanwhile.
 function withJobs(fn) {
-  if (window.FULL_JOBS) { fn(); return; }
+  if (jobsReady) { fn(); return; }
   app.append(el("p", { class: "muted" }, T("Loading the job list...")));
   ensureJobsData()
     .then(() => { if (route.page === "jobs" || route.page === "job") render(); })
@@ -36,7 +61,7 @@ const TRACK_LABELS = { enlisted: "Enlisted", warrant: "Warrant officer", officer
 const trackLabel = (track) => T(TRACK_LABELS[track]);
 
 function jobsFor(branch) {
-  return (window.FULL_JOBS && window.FULL_JOBS[branch]) || [];
+  return (jobsReady && window.FULL_JOBS[branch]) || [];
 }
 
 function jobsLink(branch, track = "enlisted") {
@@ -64,7 +89,7 @@ const CATEGORY_INTERESTS = [
 ];
 
 function jobInterest(job) {
-  const text = `${job.category} ${job.title}`;
+  const text = `${job.categoryEn || job.category} ${job.titleEn || job.title}`;
   const hit = CATEGORY_INTERESTS.find(([re]) => re.test(text));
   return hit ? hit[1] : null;
 }
@@ -81,7 +106,7 @@ function renderJobs() {
 
     const draw = () => {
       const q = search.value.trim().toLowerCase();
-      const shown = jobs.filter((j) => !q || `${j.code || ""} ${j.title} ${j.category} ${j.description}`.toLowerCase().includes(q));
+      const shown = jobs.filter((j) => !q || `${j.code || ""} ${j.title} ${j.titleEn} ${j.category} ${j.description}`.toLowerCase().includes(q));
       const groups = {};
       for (const j of shown) (groups[j.category || "Other"] ||= []).push(j);
       list.replaceChildren(
@@ -98,7 +123,7 @@ function renderJobs() {
     app.append(el("div", { class: "fade-in" },
       el("a", { class: "back-link", href: branchLink(b) }, `← ${info.name}`),
       el("div", { class: "result-hero", style: `--hero:${info.color}; margin-top:12px` },
-        el("h1", {}, `${info.name} jobs`),
+        el("h1", {}, T("{branch} jobs", { branch: info.name })),
         el("div", { class: "pct" }, T("{count} JOBS", { count: all.length }))),
       el("div", { class: "seg", role: "group", "aria-label": T("Role") }, tracks.map((t) =>
         el("a", { class: "seg-item" + (t === track ? " active" : ""), href: jobsLink(b, t) }, `${trackLabel(t)} (${all.filter((j) => j.track === t).length})`))),
@@ -106,7 +131,7 @@ function renderJobs() {
       list,
       el("p", { class: "muted", style: "font-size:13px; margin-top:20px" },
         T("Built from the {branch}'s official career listings in October 2026. Jobs are added, renamed and retired over time, and openings depend on test scores, physical standards and needs, so confirm with a recruiter.", { branch: info.name })),
-      LANG !== "en" ? el("p", { class: "muted", style: "font-size:13px" }, T("Job titles and descriptions are only available in English.")) : null,
+      LANG !== "en" && !jobsTranslated ? el("p", { class: "muted", style: "font-size:13px" }, T("Job titles and descriptions are only available in English.")) : null,
     ));
   });
 }
@@ -126,6 +151,7 @@ function renderJob() {
       el("div", { class: "result-hero", style: `--hero:${info.color}; margin-top:12px` },
         el("div", { class: "pct" }, [info.name.toUpperCase(), trackLabel(job.track).toUpperCase(), job.code].filter(Boolean).join(" · ")),
         el("h1", { style: "margin-top:8px" }, job.title),
+        job.titleEn !== job.title ? el("p", { class: "muted", lang: "en", style: "margin:0 0 4px" }, job.titleEn) : null,
         el("p", { class: "muted", style: "margin:0" }, job.category)),
       el("div", { class: "section-title" }, T("What you'd do")),
       el("p", {}, job.description || T("No description yet. See the official page for details.")),
