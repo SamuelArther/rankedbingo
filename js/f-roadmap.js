@@ -60,7 +60,7 @@ function roadmapPhases(top) {
           links: [[T("8-week prep plan"), "#/prep"], [T("PT tracker"), "#/pt-log"]] },
         { id: "bootcamp", title: T("Learn what boot camp is like"),
           why: T("Week by week, plus a choose-your-path story through your branch's boot camp."),
-          links: [[T("Boot camp & training"), "#/training"], [T("Boot camp story"), "#/story"]] },
+          links: [[T("Boot camp & training"), "#/training"], [T("Graduation & family day"), "#/graduation"], [T("Boot camp story"), "#/story"]] },
         { id: "family", title: T("Talk it over with your family"),
           why: T("A page written for parents answers the questions they usually ask."),
           links: [[T("For parents"), "#/parents"]] },

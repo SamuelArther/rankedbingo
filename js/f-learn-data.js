@@ -391,6 +391,7 @@ window.F_LEARN = {
         "In a real emergency, like a death or serious illness in the family, contact the American Red Cross, which relays emergency messages to service members.",
         "Families are welcome at graduation. Each boot camp posts its graduation schedule and visitor rules online.",
       ],
+      link: ["#/graduation", "Graduation & family day, branch by branch"],
       sources: [["https://www.bootcamp.navy.mil/FAQ/", "Navy boot camp FAQ"], ["https://www.redcross.org/get-help/military-families/emergency-communication.html", "Red Cross emergency messages"]],
     },
     {

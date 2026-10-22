@@ -1,0 +1,107 @@
+/* Boot camp graduation guide. */
+
+.grad-page { display: grid; gap: 16px; }
+.grad-page > h1, .grad-page > p, .grad-page > .eyebrow { margin-bottom: 0; }
+.grad-checked { font-size: 13px; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 10px; margin: 0; }
+.grad-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Sections. */
+.grad-sec { padding: 18px 18px 14px; scroll-margin-top: 80px; min-width: 0; }
+.grad-sec:focus { outline: none; }
+.grad-sec:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.grad-sec h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 21px; }
+.grad-sec h3 { margin: 18px 0 8px; font-size: 18px; }
+.grad-sec h4 { margin: 0 0 6px; font-size: 15px; }
+.grad-sec p { margin: 0 0 10px; line-height: 1.55; }
+.grad-icon { font-size: 22px; line-height: 1; }
+.grad-points { margin: 4px 0 12px; font-size: 15px; line-height: 1.5; }
+.grad-points .mark { color: var(--accent); }
+.grad-src { margin: 6px 0 0 !important; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; line-height: 1.4 !important; }
+.grad-src a { color: var(--muted); }
+.grad-fine { font-size: 13px; line-height: 1.5; }
+.grad-note { margin: 12px 0 0; line-height: 1.5; }
+.grad-more .actions { margin: 0; }
+
+/* "On this page" jump chips. */
+.grad-toc { display: grid; gap: 6px; }
+.grad-toc .chips { margin: 0; }
+.grad-toc .chip-btn { min-height: 32px; }
+
+/* At-a-glance table. */
+.grad-table-wrap { border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; background: var(--panel); margin: 4px 0 16px; }
+.grad-table-wrap:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.grad-table { min-width: 640px; table-layout: fixed; }
+.grad-table th, .grad-table td { white-space: normal; vertical-align: top; padding: 10px; font-size: 14px; line-height: 1.4; }
+.grad-table thead th { font-size: 11px; }
+.grad-table thead th:first-child { width: 17%; }
+.grad-table tbody th {
+  font: 700 14px/1.35 var(--sans); letter-spacing: 0; text-transform: none; background: var(--panel-2);
+  color: color-mix(in srgb, var(--hero) 50%, var(--text)); border-left: 4px solid var(--hero);
+}
+.grad-table tbody tr:last-child th, .grad-table tbody tr:last-child td { border-bottom: 0; }
+
+/* Branch tabs and panel. */
+.grad-tabs { margin-bottom: 10px; }
+.grad-tab { border-top: 3px solid var(--hero); min-height: 40px; }
+.grad-panel { padding: 16px; border: 1px solid var(--line); border-left: 5px solid var(--hero); border-radius: 12px; background: var(--panel-2); animation: grad-in 0.25s ease; }
+.grad-panel-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.grad-panel-top h3 { margin: 0; font-size: 20px; color: color-mix(in srgb, var(--hero) 50%, var(--text)); }
+.grad-event { font: 600 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); }
+.grad-where { font-size: 15px; color: var(--muted); }
+.grad-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 8px; margin: 8px 0 14px; }
+.grad-facts > div { padding: 10px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); }
+.grad-facts dt { font: 600 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.grad-facts dd { margin: 0; font-size: 15px; line-height: 1.5; }
+.grad-sched-h { margin-top: 4px !important; }
+.grad-scheds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 10px; margin-bottom: 12px; }
+.grad-sched { padding: 12px 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); }
+.grad-days { list-style: none; margin: 6px 0 0; padding: 0 0 0 14px; border-left: 2px solid var(--line); display: grid; gap: 10px; }
+.grad-days > li { position: relative; }
+.grad-days > li::before { content: ""; position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--hero); }
+.grad-day { font: 600 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: color-mix(in srgb, var(--hero) 50%, var(--text)); }
+.grad-days ul { margin: 4px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.45; display: grid; gap: 2px; }
+@keyframes grad-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* If nobody can come. */
+.grad-streams { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 8px; }
+.grad-streams li { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--hero); font-size: 14px; line-height: 1.45; }
+.grad-streams strong { color: color-mix(in srgb, var(--hero) 50%, var(--text)); }
+.grad-mail { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 8px; align-items: start; margin-bottom: 4px; }
+.grad-mail-item { background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--hero); border-radius: 10px; padding: 0 14px; }
+.grad-mail-item summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; min-height: 44px; box-sizing: border-box; }
+.grad-mail-item summary::-webkit-details-marker { display: none; }
+.grad-mail-item summary::after { content: "+"; font: 700 18px var(--mono); color: var(--accent); }
+.grad-mail-item[open] summary::after { content: "–"; }
+.grad-mail-item summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+.grad-mail-body { padding-bottom: 12px; }
+.grad-mail-body .grad-points { margin: 0; font-size: 14px; }
+
+/* Your choice. */
+.grad-choice { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 8px; }
+.grad-choice li { display: grid; gap: 4px; padding: 10px 0 10px 14px; border-left: 3px solid var(--accent); font-size: 15px; line-height: 1.5; }
+.grad-worried { margin-top: 12px !important; }
+.grad-talk { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 10px; }
+.grad-talk-card { padding: 14px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+.grad-talk-card p { font-size: 14px; }
+
+/* Families. */
+.grad-check { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.grad-check li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.grad-check input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); cursor: pointer; }
+.grad-check label { font-size: 15px; line-height: 1.5; cursor: pointer; }
+.grad-check input:checked + label { color: var(--muted); }
+.grad-count { margin: 8px 0 0 !important; font: 600 12px/1.4 var(--mono); color: var(--muted); }
+.grad-differs { display: grid; gap: 8px; margin: 0 0 6px; }
+.grad-differs > div { display: grid; grid-template-columns: 150px 1fr; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.grad-differs dt { font-weight: 700; font-size: 15px; }
+.grad-differs dd { margin: 0; font-size: 15px; line-height: 1.5; }
+
+@media (max-width: 480px) {
+  .grad-sec { padding: 16px 14px 12px; }
+  .grad-panel { padding: 14px 12px; }
+  .grad-differs > div { grid-template-columns: 1fr; gap: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grad-panel { animation: none; }
+}

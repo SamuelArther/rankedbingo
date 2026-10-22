@@ -1265,6 +1265,9 @@ function renderTraining() {
     el("div", { class: "note", style: "margin-top:14px" }, T("Tip: show up in shape. Practice running, push-ups, sit-ups or planks, and swimming before you ship.")),
     el("div", { class: "section-title" }, T("Branch by branch")),
     el("div", { class: "jobs" }, ORDER.map((b) => trainingCard(b))),
+    el("div", { class: "actions" },
+      el("a", { class: "button", href: "#/graduation" }, T("Graduation & family day →")),
+      el("a", { class: "button", href: "#/story" }, T("Boot camp story"))),
   ));
 }
 // Exposed for automated checks. QUESTIONS is a getter because each quiz
